@@ -1,0 +1,23 @@
+from aiogram import types, Router
+from utils.logger import write_user_log
+from utils.user_utils import get_user_name
+from keyboards.edit_profile import get_edit_profile_inline_keyboard
+
+router = Router()
+
+@router.callback_query(lambda c: c.data == "edit_profile_menu")
+async def edit_profile_menu(callback: types.CallbackQuery):
+
+    user_id = callback.from_user.id
+    user_name = await get_user_name(callback)
+
+    write_user_log(f"Пользователь {callback.from_user.full_name} ({user_id}) перешёл в меню редактирования профиля")
+
+    inline_keyboard = get_edit_profile_inline_keyboard()
+
+    await callback.message.edit_text(
+        f"Привет, {user_name}! Нажми на кнопку, чтобы выбрать действие для редактирования профиля:",
+        reply_markup=inline_keyboard
+    )
+
+    await callback.answer() # Убрать эффект загрузки
