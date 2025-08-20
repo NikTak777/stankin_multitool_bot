@@ -59,4 +59,4 @@ async def save_user_birthday(user_id: int, username: str, full_name: str, day: i
 
     # Лог
     msg = f"Пользователь {full_name} ({user_id}) установил дату рождения {day}.{month}.{year}"
-    await write_user_log(msg)
+    write_user_log(msg)
