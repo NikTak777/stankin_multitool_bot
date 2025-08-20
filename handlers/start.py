@@ -3,6 +3,8 @@ from aiogram.filters import Command
 from utils.logger import write_user_log
 from utils.user_utils import get_user_name
 from keyboards.start import get_start_inline_keyboard
+
+# Декораторы
 from decorators.private_only import private_only
 from decorators.sync_username import sync_username
 from decorators.ensure_user_in_db import ensure_user_in_db
