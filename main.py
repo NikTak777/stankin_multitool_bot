@@ -2,7 +2,7 @@ from bot import bot, dp
 import asyncio
 import logging
 
-from handlers import start, info, birthdate, group_registration, admin_panel, edit_profile
+from handlers import start, info, birthdate, group_registration, admin_panel, edit_profile, friend_wishlist, user_wishlist
 from utils.logger import write_user_log
 from utils import set_user_birthdate
 
@@ -17,6 +17,8 @@ dp.include_router(set_user_birthdate.router)
 dp.include_router(group_registration.router)
 dp.include_router(admin_panel.router)
 dp.include_router(edit_profile.router)
+dp.include_router(friend_wishlist.router)
+dp.include_router(user_wishlist.router)
 
 async def main():
     """Запуск бота"""
