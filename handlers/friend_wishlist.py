@@ -46,7 +46,7 @@ async def callback_friend_wishlist(callback: CallbackQuery, state: FSMContext):
     await process_friend_wishlist(callback.from_user, callback.message, state, is_callback=True)
 
 # Универсальная функция для запроса тега друга
-@require_birthdate("wishlist")
+@require_birthdate("friend_wishlist")
 async def process_friend_wishlist(user, message_obj, state: FSMContext, is_callback=False):
     user_id = user.id
     user_info = get_user_info(user_id)
