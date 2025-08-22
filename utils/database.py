@@ -91,8 +91,6 @@ def get_real_user_name(user_id):
             CASE 
                 WHEN cust_user_name IS NOT NULL AND cust_user_name != '' 
                 THEN cust_user_name
-                WHEN real_user_name IS NOT NULL AND real_user_name != '' 
-                THEN real_user_name
                 ELSE user_name 
             END AS final_name 
         FROM users 
