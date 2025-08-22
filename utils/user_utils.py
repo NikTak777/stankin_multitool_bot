@@ -1,6 +1,7 @@
 from aiogram import types, Bot
 from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
+from aiogram.exceptions import TelegramBadRequest
 
 from states.group_state import GroupState
 
@@ -74,3 +75,11 @@ async def check_group_user(
         return False
 
     return True
+
+async def is_user_accessible(user_id: int) -> bool:
+    """Проверяет, доступен ли пользователь для бота."""
+    try:
+        await bot.get_chat(user_id)
+        return True
+    except TelegramBadRequest:
+        return False
