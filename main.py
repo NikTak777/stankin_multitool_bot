@@ -7,6 +7,8 @@ from handlers import (start, info, birthdate, group_registration,
 from utils.logger import write_user_log
 from utils import set_user_birthdate
 
+from tasks.daily_schedule import send_daily_schedule
+
 # Отключение ненужных логов от aiogram
 # logging.getLogger("aiogram.event").setLevel(logging.WARNING)
 
@@ -27,6 +29,10 @@ dp.include_router(schedule.router)
 async def main():
     """Запуск бота"""
     write_user_log("Бот запущен!")  # Логирует запуск
+
+    # ⬇️ запускаем рассылку параллельно с ботом
+    asyncio.create_task(send_daily_schedule())
+
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
