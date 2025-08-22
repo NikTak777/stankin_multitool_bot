@@ -1,17 +1,9 @@
 from aiogram.types import InlineKeyboardMarkup
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton
 from datetime import datetime, timedelta
 import pytz
 
 tz_moscow = pytz.timezone("Europe/Moscow")
-
-def get_day_selection_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-    builder.button(text="Сегодня", callback_data="schedule_today")
-    builder.button(text="Завтра", callback_data="schedule_tomorrow")
-    builder.button(text="Выбрать день", callback_data="schedule_custom")
-    builder.adjust(1)
-    return builder.as_markup()
 
 
 def get_week_days_keyboard() -> InlineKeyboardMarkup:
@@ -38,3 +30,37 @@ def get_week_days_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="🔀 Другой день", callback_data="schedule_custom")
     builder.adjust(3, 3, 1)
     return builder.as_markup()
+
+
+def get_custom_schedule_keyboard(target_date: datetime) -> InlineKeyboardMarkup:
+    """
+    Возвращает inline-клавиатуру для кастомного расписания с:
+    - Стрелки Вперёд/Назад
+    - Кнопка "Выбрать другую дату"
+    - Кнопка "Назад в меню"
+    """
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [  # ряд 1: листание дней
+            InlineKeyboardButton(
+                text="◀️ Назад",
+                callback_data=f"schedule_date_{(target_date - timedelta(days=1)).strftime('%Y-%m-%d')}"
+            ),
+            InlineKeyboardButton(
+                text="▶️ Вперёд",
+                callback_data=f"schedule_date_{(target_date + timedelta(days=1)).strftime('%Y-%m-%d')}"
+            )
+        ],
+        [  # ряд 2: выбор другой даты
+            InlineKeyboardButton(
+                text="🔄 Выбрать другую дату",
+                callback_data="schedule_custom"
+            )
+        ],
+        [  # ряд 3: возврат в меню
+            InlineKeyboardButton(
+                text="⬅️ Назад в меню",
+                callback_data="start"
+            )
+        ]
+    ])
+    return kb
