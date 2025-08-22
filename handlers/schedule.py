@@ -1,5 +1,5 @@
 from aiogram import Router, F, types, Bot
-from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 import pytz
 
 from services.schedule_service import get_schedule_for_date
-from keyboards.schedule_keyboards import get_day_selection_keyboard, get_week_days_keyboard
+from keyboards.schedule_keyboards import get_custom_schedule_keyboard, get_week_days_keyboard
 from states.schedule import ScheduleState
 from utils.logger import write_user_log
 from utils.user_utils import check_group_user
@@ -137,13 +137,37 @@ async def show_custom_schedule(message: types.Message, state: FSMContext, bot: B
             )
             write_user_log(f"Пользователь {user_fullname} ({user_id}) ввёл некорректную дату {day}.{month}")
         else:
-            await message.answer(schedule_message, reply_markup=ReplyKeyboardRemove(), parse_mode="HTML")
+
+            target_date = datetime(message.date.year, month, day, tzinfo=tz_moscow)
+
+            await show_custom_schedule_for_date(
+                user_id=user_id,
+                user_fullname=user_fullname,
+                target_date=target_date,
+                message=message
+            )
             write_user_log(f"Пользователь {user_fullname} ({user_id}) посмотрел расписание на {day}.{month}")
 
         await state.clear()
     else:
         await message.answer("Пожалуйста, выберите корректный месяц (1–12):")
 
+
+@router.callback_query(F.data.startswith("schedule_date_"))
+async def handle_custom_schedule_date(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
+    date_str = callback.data.split("_")[-1]
+    target_date = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=tz_moscow)
+
+    user_has_group = await check_group_user(callback.from_user, state, bot, callback=callback)
+    if not user_has_group:
+        return
+
+    await show_custom_schedule_for_date(
+        user_id=callback.from_user.id,
+        user_fullname=callback.from_user.full_name,
+        target_date=target_date,
+        callback=callback
+    )
 
 # --- Общая функция для показа расписания ---
 async def show_schedule_for_date(
@@ -188,5 +212,53 @@ async def show_schedule_for_date(
             print(f"TelegramBadRequest: {e}")
 
     write_user_log(
-        f"Пользователь {user_fullname} ({user_id}) посмотрел расписание на {target_date.strftime('%d.%m')}"
+        f"Пользователь {user_fullname} ({user_id}) посмотрел недельное расписание на {target_date.strftime('%d.%m')}"
+    )
+
+
+# --- Отдельная функция для показа расписания по конкретной дате (с кастомными стрелками) ---
+async def show_custom_schedule_for_date(
+    user_id: int,
+    user_fullname: str,
+    target_date: datetime,
+    message: types.Message | None = None,
+    callback: types.CallbackQuery | None = None,
+):
+    """Отправляет/редактирует расписание с клавиатурой Вперёд/Назад + выбор новой даты + возврат в меню."""
+
+    schedule_message = get_schedule_for_date(user_id, target_date.day, target_date.month)
+
+    if not schedule_message or schedule_message == "incorrect date":
+        text = "⚠️ Расписание пока недоступно для вашей группы."
+        if callback:
+            await callback.message.edit_text(text)
+            await callback.answer()
+        elif message:
+            await message.answer(text)
+        return
+
+    # Клавиатура
+    kb = get_custom_schedule_keyboard(target_date)
+
+    try:
+        if callback:
+            await callback.message.edit_text(
+                text=schedule_message,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+            await callback.answer()
+        elif message:
+            await message.answer(
+                text=schedule_message,
+                reply_markup=kb,
+                parse_mode="HTML"
+
+            )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            print(f"TelegramBadRequest: {e}")
+
+    write_user_log(
+        f"Пользователь {user_fullname} ({user_id}) посмотрел кастомное расписание на {target_date.strftime('%d.%m')}"
     )
