@@ -123,6 +123,9 @@ async def show_custom_schedule(message: types.Message, state: FSMContext, bot: B
         if not user_has_group:
             return
 
+        tmp_msg = await message.answer("...", reply_markup=types.ReplyKeyboardRemove())
+        await tmp_msg.delete()
+
         # Получаем расписание
         schedule_message = get_schedule_for_date(user_id, day, month)
 
@@ -255,6 +258,7 @@ async def show_custom_schedule_for_date(
                 parse_mode="HTML"
 
             )
+
     except TelegramBadRequest as e:
         if "message is not modified" not in str(e):
             print(f"TelegramBadRequest: {e}")
