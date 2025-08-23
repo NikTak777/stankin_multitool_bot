@@ -41,7 +41,7 @@ async def send_start_menu(message_or_callback):
     user_name = await get_user_name(user)
     inline_keyboard = get_start_inline_keyboard()
 
-    text = f"Привет, {user_name}! Нажми на кнопку, чтобы выбрать действие:"
+    text = f"Привет, {user_name}!\n\nНажми на кнопку, чтобы выбрать действие:"
 
     if is_callback:
         # Для callback - редактируем существующее сообщение бота

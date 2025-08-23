@@ -7,7 +7,7 @@ from utils.logger import write_user_log
 from utils.database import get_user_info
 from utils.date_utils import format_date
 
-from keyboards.back_to_menu import get_back_inline_keyboard
+from keyboards.profile_menu_keyboard import get_profile_menu_inline_keyboard
 
 # Декораторы
 from decorators.private_only import private_only
@@ -23,17 +23,16 @@ router = Router()
 @ensure_user_in_db
 @sync_username
 async def info_command(message: types.Message):
-    if message.chat.type != "private":
-        await message.answer("Эта команда доступна только в личной переписке с ботом.")
-        return
     await process_user_info(message.from_user, message, is_callback=False)
 
 
 # Обработчик для инлайн-кнопки (callback_data="info")
 @router.callback_query(lambda c: c.data == "info")
+@sync_username
 async def info_callback(callback: CallbackQuery):
     await callback.answer()
     await process_user_info(callback.from_user, callback.message, is_callback=True)
+
 
 @require_birthdate("info")
 async def process_user_info(user, message_obj, is_callback=False):
@@ -63,7 +62,7 @@ async def process_user_info(user, message_obj, is_callback=False):
         f"📚 Подгруппа: {user_subgroup}"
     )
     if is_callback:
-        await message_obj.edit_text(message_to_user, reply_markup=get_back_inline_keyboard())
+        await message_obj.edit_text(message_to_user, reply_markup=get_profile_menu_inline_keyboard())
     else:
-        await message_obj.answer(message_to_user, reply_markup=get_back_inline_keyboard())
+        await message_obj.answer(message_to_user, reply_markup=get_profile_menu_inline_keyboard())
     write_user_log(f"Пользователь {user.full_name} ({user_id}) получил информацию об аккаунте")
