@@ -2,7 +2,7 @@ from bot import bot, dp
 import asyncio
 import logging
 
-from handlers import (start, info, birthdate, group_registration, admin_panel, edit_profile,
+from handlers import (start_menu, info, birthdate, group_registration, admin_panel, edit_profile,
                       friend_wishlist, user_wishlist, user_group, schedule, help)
 
 from utils.logger import write_user_log
@@ -15,7 +15,7 @@ from tasks.birthday_notifications import check_birthdays
 # logging.getLogger("aiogram.event").setLevel(logging.WARNING)
 
 # Подключаем роутеры
-dp.include_router(start.router)
+dp.include_router(start_menu.router)
 dp.include_router(info.router)
 dp.include_router(birthdate.router)
 dp.include_router(set_user_birthdate.router)
