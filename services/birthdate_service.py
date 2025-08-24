@@ -45,17 +45,27 @@ async def save_user_birthday(user_id: int, username: str, full_name: str, day: i
         else:
             message_to_user = f"Спасибо! Жду с нетерпением {month_list[month - 1]}!\nДата {formatted_date} сохранена."
 
-    # Отправляем сообщение пользователю
-    await message.answer(message_to_user, reply_markup=ReplyKeyboardRemove())
-
     # Проверяем, есть ли у пользователя группа
     user_group, user_subgroup = user_info["user_group"], user_info["user_subgroup"]
     if not user_group or not user_subgroup:
+
+        # Отправляем сообщение пользователю
+        await message.answer(message_to_user, reply_markup=ReplyKeyboardRemove())
+
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📌 Указать номер группы", callback_data="ask_group")],
-            [InlineKeyboardButton(text="⏭️ Пропустить", callback_data="skip_group")]
+            [InlineKeyboardButton(text="📌 Указать номер группы", callback_data="group")],
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="info")]
         ])
         await message.answer("Хотите указать номер вашей группы?", reply_markup=keyboard)
+    else:
+
+        tmp_msg = await message.answer("...", reply_markup=ReplyKeyboardRemove())
+        await tmp_msg.delete()
+
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data="info")]
+        ])
+        await message.answer(message_to_user, reply_markup=keyboard)
 
     # Лог
     msg = f"Пользователь {full_name} ({user_id}) установил дату рождения {day}.{month}.{year}"
