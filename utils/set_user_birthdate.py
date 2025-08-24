@@ -1,19 +1,17 @@
 # utils/set_user_birthdate.py
 from datetime import datetime
 import pytz
-from aiogram import types, Router
+from aiogram import types, Router, F
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from states.birthdate import BirthdayStates
 from utils.logger import write_user_log
 from services.birthdate_service import save_user_birthday
-from utils.date_utils import format_date
-from utils.database import add_user_with_bd, get_user_info, update_is_approved
 
 router = Router()
 
 # Обработчик для нажатия инлайн-кнопки «Указать дату дня рождения»
-@router.callback_query(lambda c: c.data == "start_birthdate_input")
+@router.callback_query(F.data == "start_birthdate_input")
 async def start_birthdate_input(callback: types.CallbackQuery, state: FSMContext):
     # Формируем reply-клавиатуру для выбора дня
     buttons = [KeyboardButton(text=str(day)) for day in range(1, 32)]
@@ -104,7 +102,7 @@ async def save_birthday(message: types.Message, state: FSMContext):
             write_user_log(f"Пользователь {message.from_user.full_name} ({message.from_user.id}) ввёл неверную дату рождения")
             # Предлагаем перезапустить ввод даты рождения через инлайн-кнопку
             from keyboards.birthdate import get_birthdate_inline_keyboard
-            keyboard = get_birthdate_inline_keyboard("start")
+            keyboard = get_birthdate_inline_keyboard()
             await message.answer(error_message, reply_markup=keyboard)
             return
 
@@ -129,8 +127,6 @@ async def save_birthday(message: types.Message, state: FSMContext):
             year=year,
             message=message
         )
-        #await state.clear()
-        #await message.answer(message_to_user, reply_markup=ReplyKeyboardRemove())
         write_user_log(f"Пользователь {user_name} ({user_id}) установил дату рождения на {day}.{month}.{year}")
         await state.clear()
     else:
