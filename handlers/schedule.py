@@ -9,6 +9,7 @@ import pytz
 
 from services.schedule_service import get_schedule_for_date
 from keyboards.schedule_keyboards import get_custom_schedule_keyboard, get_week_days_keyboard
+from keyboards.back_to_menu import get_back_inline_keyboard
 from states.schedule import ScheduleState
 from utils.logger import write_user_log
 from utils.user_utils import check_group_user
@@ -185,10 +186,10 @@ async def show_schedule_for_date(
 
     if not schedule_message:
         if callback:
-            await callback.message.edit_text("⚠️ Расписание пока недоступно для вашей группы.")
+            await callback.message.edit_text("⚠️ Расписание пока недоступно для вашей группы.", reply_markup=get_back_inline_keyboard("start"))
             await callback.answer()
         elif message:
-            await message.answer("⚠️ Расписание пока недоступно для вашей группы.")
+            await message.answer("⚠️ Расписание пока недоступно для вашей группы.", reply_markup=get_back_inline_keyboard("start"))
         return
 
     inline_kb = get_week_days_keyboard()
@@ -234,10 +235,10 @@ async def show_custom_schedule_for_date(
     if not schedule_message or schedule_message == "incorrect date":
         text = "⚠️ Расписание пока недоступно для вашей группы."
         if callback:
-            await callback.message.edit_text(text)
+            await callback.message.edit_text(text, reply_markup=get_back_inline_keyboard("start"))
             await callback.answer()
         elif message:
-            await message.answer(text)
+            await message.answer(text, reply_markup=get_back_inline_keyboard("start"))
         return
 
     # Клавиатура
