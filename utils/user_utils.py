@@ -3,7 +3,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import ReplyKeyboardRemove
 from aiogram.exceptions import TelegramBadRequest
 
-from states.group_state import GroupState
+from keyboards.cancel_keyboard import get_cancel_inline_keyboard
+
+from utils.group_utils import load_groups
 
 from utils.database import get_real_user_name, check_user_exists, add_user_to_db, get_user_info
 from aiogram.types import ChatMemberAdministrator, ChatMemberOwner
@@ -38,7 +40,7 @@ async def check_group_user(
     bot: Bot,
     message: types.Message | None = None,
     callback: types.CallbackQuery | None = None,
-    from_schedule: bool = False,
+    from_schedule: bool = True,
 ) -> bool:
     """Проверяет наличие группы и подгруппы, если их нет — запрашивает и сохраняет.
        Если message передан — редактируем его, иначе отправляем новое сообщение."""
@@ -62,13 +64,14 @@ async def check_group_user(
             # Если вызов из инлайн-кнопки — редактируем сообщение
             if callback:
                 # редактируем сообщение без ReplyKeyboardRemove
-                await callback.message.edit_text(text)
+                await callback.message.edit_text(text, reply_markup=get_cancel_inline_keyboard("start"))
+                await callback.answer()  # Удаляем эффект загрузки
             elif message:
                 # обычное новое сообщение — можно убрать клавиатуру
-                await bot.send_message(user_id, text, reply_markup=ReplyKeyboardRemove())
+                await bot.send_message(user_id, text, reply_markup=get_cancel_inline_keyboard("start"))
         elif message:
             # Если вызов из команды /schedule — новое сообщение
-            await bot.send_message(user_id, text, reply_markup=ReplyKeyboardRemove())
+            await bot.send_message(user_id, text, reply_markup=get_cancel_inline_keyboard("start"))
 
         await state.set_state("GroupState:waiting_for_group")
         await state.update_data(from_schedule=from_schedule)
@@ -83,3 +86,18 @@ async def is_user_accessible(user_id: int) -> bool:
         return True
     except TelegramBadRequest:
         return False
+
+
+async def is_user_group_admin(user_id: int) -> str | None:
+    """
+    Проверяет, является ли пользователь старостой (админом) группы.
+    Возвращает название группы, если он админ, иначе None.
+    """
+    groups = await load_groups()
+
+    user_group = next(
+        (group for group, data in groups.items() if data.get("registered_by") == user_id),
+        None
+    )
+
+    return user_group
