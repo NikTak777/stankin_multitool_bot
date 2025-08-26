@@ -28,6 +28,7 @@ def get_week_days_keyboard() -> InlineKeyboardMarkup:
         count += 1
 
     builder.button(text="🔀 Другой день", callback_data="schedule_custom")
+    builder.button(text="⬅️ Назад в меню", callback_data="start")
     builder.adjust(3, 3, 1)
     return builder.as_markup()
 
