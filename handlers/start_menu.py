@@ -1,7 +1,8 @@
 from aiogram import types, Router
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from utils.logger import write_user_log
-from utils.user_utils import get_user_name
+from utils.user_utils import get_user_name, is_user_group_admin
 from keyboards.start import get_start_inline_keyboard
 
 # Декораторы
@@ -20,7 +21,10 @@ async def start_msg(message: types.Message):
 
 
 @router.callback_query(lambda c: c.data == "start")
-async def go_to_start_menu(callback: types.CallbackQuery):
+async def go_to_start_menu(callback: types.CallbackQuery, state: FSMContext):
+
+    await state.clear()  # Сброс состояния
+
     await send_start_menu(callback)
     await callback.answer()
 
@@ -39,9 +43,10 @@ async def send_start_menu(message_or_callback):
         return
 
     user_name = await get_user_name(user)
-    inline_keyboard = get_start_inline_keyboard()
+    is_admin = await is_user_group_admin(user.id)
+    inline_keyboard = get_start_inline_keyboard(is_admin)
 
-    text = f"Привет, {user_name}! Нажми на кнопку, чтобы выбрать действие:"
+    text = f"Привет, {user_name}!\n\nНажми на кнопку, чтобы выбрать действие:"
 
     if is_callback:
         # Для callback - редактируем существующее сообщение бота

@@ -6,6 +6,9 @@ from aiogram.types import CallbackQuery, ReplyKeyboardRemove
 from utils.logger import write_user_log
 from utils.database import update_user_wishlist
 
+from keyboards.back_to_menu import get_back_inline_keyboard
+from keyboards.cancel_keyboard import get_cancel_inline_keyboard
+
 # Декораторы
 from decorators.private_only import private_only
 from decorators.sync_username import sync_username
@@ -22,7 +25,7 @@ router = Router()
 async def cmd_user_wishlist(message: types.Message, state: FSMContext):
 
     msg = f"Пользователь {message.from_user.full_name} ({message.from_user.id}) ввёл команду /my_wishlist"
-    await write_user_log(msg)
+    write_user_log(msg)
 
     await process_user_wishlist(message.from_user, message, state, is_callback=False)
 
@@ -43,9 +46,9 @@ async def process_user_wishlist(user, message_obj, state: FSMContext, is_callbac
     msg_to_user = f"Пожалуйста, введите вишлист одним сообщением через запятую:"
 
     if is_callback:
-        await message_obj.edit_text(msg_to_user)
+        await message_obj.edit_text(msg_to_user, reply_markup=get_cancel_inline_keyboard("edit_profile_menu"))
     else:
-        await message_obj.answer(msg_to_user, reply_markup=ReplyKeyboardRemove())
+        await message_obj.answer(msg_to_user, reply_markup=get_cancel_inline_keyboard("edit_profile_menu"))
 
     await state.set_state("awaiting_user_wishlist")
 
@@ -62,7 +65,7 @@ async def show_user_wishlist(message: types.Message, state: FSMContext):
     UserID = message.from_user.id
 
     update_user_wishlist(UserID, new_wishlist)
-    await message.answer(f"Ваш новый вишлист успешно сохранен: {new_wishlist}")
+    await message.answer(f"Ваш новый вишлист успешно сохранен: {new_wishlist}", reply_markup=get_back_inline_keyboard("info"))
     msg = f"Пользователь {message.from_user.full_name} ({UserID}) установил новый вишлист: {new_wishlist}"
-    await write_user_log(msg)
+    write_user_log(msg)
     await state.clear()

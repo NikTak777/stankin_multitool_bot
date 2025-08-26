@@ -13,45 +13,91 @@ from aiogram.exceptions import TelegramBadRequest
 
 
 from utils.group_utils import load_groups, save_groups
+from handlers.start_menu import send_start_menu
+from utils.user_utils import get_user_name, is_user_group_admin
 from utils.logger import write_user_log
-from utils.database import get_users_by_group, get_approval_status, toggle_user_approval, update_real_user_name
+from utils.database import get_users_by_group, get_approval_status, toggle_user_approval, update_real_user_name, get_real_user_name
+
+# Декораторы
+from decorators.private_only import private_only
+from decorators.sync_username import sync_username
+from decorators.ensure_user_in_db import ensure_user_in_db
+
 
 router = Router()
 
+# Обработчик команды /panel
 @router.message(Command("panel"))
-async def admin_panel(message: types.Message):
+@private_only
+@ensure_user_in_db
+@sync_username
+async def cmd_group_panel(message: types.Message):
+    await send_admin_panel(
+        bot=message.bot,
+        user_id=message.from_user.id,
+        chat_id=message.chat.id,
+        full_name=message.from_user.full_name,
+        message=message,          # передаём message
+        callback=None             # не из callback
+    )
 
-    if message.chat.type != "private":
-        await message.answer("❌ Эта команда доступна только в личной переписке с ботом.")
+
+# Обработчик инлайн-кнопки
+@router.callback_query(F.data == "panel")
+async def handle_panel_callback(callback: types.CallbackQuery):
+    await send_admin_panel(
+        bot=callback.bot,
+        user_id=callback.from_user.id,
+        chat_id=callback.message.chat.id,
+        full_name=callback.from_user.full_name,
+        message=callback.message, # передаём callback.message
+        callback=callback         # сигнал, что вызвано из callback
+    )
+    await callback.answer()
+
+async def send_admin_panel(
+    bot: Bot,
+    user_id: int,
+    chat_id: int,
+    full_name: str,
+    message: types.Message,
+    callback: types.CallbackQuery | None
+):
+    is_admin = await is_user_group_admin(user_id)
+
+    if not is_admin:
+        if callback:
+            await message.edit_text("❌ У вас нет доступа к панели управления, так как вы не зарегистрированы как староста.")
+        else:
+            await bot.send_message(chat_id, "❌ У вас нет доступа к панели управления, так как вы не зарегистрированы как староста.")
         return
 
-    UserID = message.from_user.id
     groups = await load_groups()
 
     # Проверяем, является ли пользователь старостой
-    user_group = next((group for group, data in groups.items() if data["registered_by"] == UserID), None)
-
-    if not user_group:
-        await message.answer("❌ У вас нет доступа к панели управления, так как вы не зарегистрированы как староста.")
-        return
+    user_group = next((group for group, data in groups.items() if data["registered_by"] == user_id), None)
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✏️ Редактировать группу", callback_data="edit_group")],
         [InlineKeyboardButton(text="🗑 Удалить регистрацию", callback_data="delete_group")]
     ])
 
+    user_name = get_real_user_name(user_id)
+
     text = (
-        f"Привет, {message.from_user.full_name}!\n"
+        f"Привет, {user_name}!\n"
         "Это панель управления вашей группой.\n\n"
         f"📌 Вы являетесь старостой группы {user_group}\n\n"
         "Выберите действие:"
     )
 
-    msg = f"Админ {message.from_user.full_name} ({message.from_user.id}) открыл панель управления группой {user_group}"
+    msg = f"Админ {full_name} ({user_id}) открыл панель управления группой {user_group}"
     write_user_log(msg)
 
-    await message.answer(text, reply_markup=keyboard)
-
+    if callback:
+        await message.edit_text(text, reply_markup=keyboard)
+    else:
+        await bot.send_message(chat_id, text, reply_markup=keyboard)
 
 # Определяем состояния
 class EditState(StatesGroup):
@@ -329,6 +375,10 @@ async def handle_cancel(callback: types.CallbackQuery, state: FSMContext):
     except TelegramBadRequest:
         pass
 
+    # Отправляем стартовое меню отдельным сообщением
+    await send_start_menu(callback)
+    await callback.answer()
+
 
 class DeleteGroupState(StatesGroup):
     waiting_for_confirmation = State()
@@ -381,3 +431,6 @@ async def confirm_delete_group(message: types.Message, state: FSMContext):
         await message.answer("❌ Ошибка: группа не найдена.")
 
     await state.clear()
+
+    # Отправляем стартовое меню отдельным сообщением
+    await send_start_menu(message)
