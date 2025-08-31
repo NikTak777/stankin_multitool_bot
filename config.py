@@ -1,0 +1,5 @@
+TOKEN = "BOT_TOKEN"
+
+BIRTHDAY_DATABASE = "path/to/database.db"
+
+ADMIN_ID = ADMIN_ID
