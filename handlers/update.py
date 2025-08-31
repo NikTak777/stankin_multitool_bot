@@ -1,5 +1,6 @@
 from aiogram import types, Router
 from aiogram.filters import Command
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot import bot
 from utils.logger import write_user_log
@@ -40,15 +41,22 @@ async def select_update(message: types.Message):
             await bot.send_message(
                 chat_id=user_id,
                 text=update_message,
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=get_inline_keyboard()
             )
             successful += 1
         except Exception as e:
             msg = f"Не удалось отправить сообщение пользователю с ID {user_id}: {e}"
-            await write_user_log(msg)
+            write_user_log(msg)
             failed += 1
 
     # Подтверждение для администратора
     await message.answer(
         f"📢 Рассылка завершена.\n✅ Успешно отправлено: {successful}\n❌ Ошибки: {failed}"
     )
+
+
+def get_inline_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Перейти в меню ➡️", callback_data="start")]
+    ])

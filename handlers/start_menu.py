@@ -29,7 +29,13 @@ async def go_to_start_menu(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-async def send_start_menu(message_or_callback):
+async def send_start_menu(message_or_callback, new_message: bool = False):
+    """
+    Отправляет главное меню пользователю.
+    Если new_message=True — всегда отправляет новое сообщение.
+    Если False — для callback редактирует сообщение, для message отвечает новым.
+    """
+
     if isinstance(message_or_callback, types.Message):
         user = message_or_callback.from_user
         message_obj = message_or_callback
@@ -48,7 +54,7 @@ async def send_start_menu(message_or_callback):
 
     text = f"Привет, {user_name}!\n\nНажми на кнопку, чтобы выбрать действие:"
 
-    if is_callback:
+    if is_callback and not new_message:
         # Для callback - редактируем существующее сообщение бота
         await message_obj.edit_text(
             text,
