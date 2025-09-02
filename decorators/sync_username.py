@@ -1,7 +1,9 @@
 from functools import wraps
 from utils.database import update_user_name, get_user_info
 
+
 def sync_username(handler):
+    """Декоратор: сихронизирует username и fullname пользователя в БД"""
     @wraps(handler)
     async def wrapper(event, *args, **kwargs):
         user_id = event.from_user.id

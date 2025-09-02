@@ -9,7 +9,6 @@ def admin_only(handler):
     """Декоратор: разрешает выполнение хэндлера только для админа бота"""
     @wraps(handler)
     async def wrapper(message: Message, *args, **kwargs):
-        print(message, " ", args, " ", kwargs)
         if message.from_user.id != ADMIN_ID:
             await message.answer("❌ У вас нет прав для выполнения этой команды.")
             return
