@@ -11,6 +11,8 @@ from utils.database import get_real_user_name, check_user_exists, add_user_to_db
 from aiogram.types import ChatMemberAdministrator, ChatMemberOwner
 from bot import bot
 
+from config import ADMIN_ID
+
 async def get_user_name(obj) -> str:
     """Возвращает настоящее имя пользователя, если оно есть в БД, иначе — Telegram full_name."""
     # Определяем, что передано - Message или User
@@ -101,3 +103,9 @@ async def is_user_group_admin(user_id: int) -> str | None:
     )
 
     return user_group
+
+
+def is_user_bot_admin(user: types.User) -> bool:
+    if user.id == ADMIN_ID:
+        return True
+    return False

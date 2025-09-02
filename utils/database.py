@@ -374,3 +374,17 @@ def clear_users():
     con.commit()
     cur.close()
     con.close()
+
+    
+def get_users_count() -> int:
+    """Возвращает количество пользователей (строк) в таблице users."""
+    con = sqlite3.connect(BIRTHDAY_DATABASE)
+    cur = con.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM users")
+    result = cur.fetchone()
+
+    cur.close()
+    con.close()
+
+    return result[0] if result else 0
