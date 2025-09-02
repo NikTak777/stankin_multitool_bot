@@ -3,7 +3,7 @@ import asyncio
 import logging
 
 from handlers import (start_menu, info, birthdate, group_registration, group_panel, edit_profile,
-                      friend_wishlist, user_wishlist, user_group, schedule, help, user_nickname, update)
+                      friend_wishlist, user_wishlist, user_group, schedule, help, user_nickname, update, admin_panel)
 
 from utils.logger import write_user_log
 from utils import set_user_birthdate
@@ -29,6 +29,7 @@ dp.include_router(schedule.router)
 dp.include_router(help.router)
 dp.include_router(user_nickname.router)
 dp.include_router(update.router)
+dp.include_router(admin_panel.router)
 
 
 async def main():
