@@ -6,16 +6,14 @@ from bot import bot
 from utils.logger import write_user_log
 from utils.database import get_all_user_ids
 
-from config import ADMIN_ID
+from decorators.admin_only import admin_only
 
 router = Router()
 
+
 @router.message(Command("update"))
+@admin_only
 async def select_update(message: types.Message):
-    # Ограничиваем доступ только админу
-    if message.from_user.id != ADMIN_ID:
-        await message.answer("❌ У вас нет прав для выполнения этой команды.")
-        return
 
     update_message = (
         "🎓 <b>Поздравляем с началом нового учебного года!</b> 🎉\n\n"
