@@ -35,6 +35,7 @@ async def cmd_user_group(message: types.Message, state: FSMContext):
 
 # Обработчик callback-кнопки
 @router.callback_query(F.data == "group")
+@sync_username
 async def callback_user_group(callback: CallbackQuery, state: FSMContext):
     write_user_log(f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) нажал кнопку ввода группы")
     await callback.answer()

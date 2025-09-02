@@ -17,6 +17,7 @@ from decorators.require_birthdate import require_birthdate
 
 router = Router()
 
+
 # Обработчик команды /my_wishlist
 @router.message(Command("my_wishlist"))
 @private_only
