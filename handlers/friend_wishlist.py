@@ -41,6 +41,7 @@ async def cmd_friend_wishlist(message: types.Message, state: FSMContext):
 
 # Обработчик callback-кнопки
 @router.callback_query(lambda c: c.data == "friend_wishlist")
+@sync_username
 async def callback_friend_wishlist(callback: CallbackQuery, state: FSMContext):
 
     msg = f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) нажал кнопку для просмотра вишлиста друга"

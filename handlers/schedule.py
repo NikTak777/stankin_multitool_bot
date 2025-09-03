@@ -43,6 +43,7 @@ async def cmd_schedule(message: types.Message, state: FSMContext, bot: Bot):
 
 # --- Обработчик для инлайн-кнопки ---
 @router.callback_query(F.data == "schedule")
+@sync_username
 async def show_today_schedule(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
     user_has_group = await check_group_user(callback.from_user, state, bot, callback=callback)
     if not user_has_group:

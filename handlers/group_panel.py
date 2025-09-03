@@ -44,6 +44,7 @@ async def cmd_group_panel(message: types.Message):
 
 # Обработчик инлайн-кнопки
 @router.callback_query(F.data == "panel")
+@sync_username
 async def handle_panel_callback(callback: types.CallbackQuery):
     await send_admin_panel(
         bot=callback.bot,

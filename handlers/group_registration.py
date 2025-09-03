@@ -9,11 +9,15 @@ from utils.group_utils import load_groups, save_groups, get_group_name_by_id, is
 from utils.database import add_user_to_db, check_user_exists
 from utils.group_utils import is_bot_admin, is_group_registered, is_group_file_exists
 from utils.user_utils import is_admin
+
+# Декораторы
 from decorators.group_only import group_only
+from decorators.sync_username import sync_username
 
 router = Router()
 
 @router.message(Command("init"))
+@sync_username
 @group_only
 async def initialization_bot_in_group(message: types.Message, state: FSMContext):
     if not check_user_exists(message.from_user.id):
