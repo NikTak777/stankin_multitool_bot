@@ -145,7 +145,7 @@ def update_user_name(user_id: int, user_name: str, full_name: str) -> bool:
     con = sqlite3.connect(BIRTHDAY_DATABASE)
     cur = con.cursor()
 
-    cur.execute("UPDATE users SET user_name = ?, full_name = ? WHERE user_id = ?", (user_name, full_name, user_id))
+    cur.execute("UPDATE users SET user_tag = ?, user_name = ? WHERE user_id = ?", (user_name, full_name, user_id))
     con.commit()
 
     cur.close()
