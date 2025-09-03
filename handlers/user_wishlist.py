@@ -17,6 +17,7 @@ from decorators.require_birthdate import require_birthdate
 
 router = Router()
 
+
 # Обработчик команды /my_wishlist
 @router.message(Command("my_wishlist"))
 @private_only
@@ -29,8 +30,10 @@ async def cmd_user_wishlist(message: types.Message, state: FSMContext):
 
     await process_user_wishlist(message.from_user, message, state, is_callback=False)
 
+
 # Обработчик callback-кнопки
 @router.callback_query(lambda c: c.data == "my_wishlist")
+@sync_username
 async def callback_user_wishlist(callback: CallbackQuery, state: FSMContext):
 
     msg = f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) нажал кнопку для просмотра своего вишлиста"

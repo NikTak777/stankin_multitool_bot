@@ -39,6 +39,7 @@ async def cmd_help(message: types.Message):
 
 # Обработчик инлайн-кнопки
 @router.callback_query(F.data == "help")
+@sync_username
 async def callback_help(callback: CallbackQuery):
     full_name = await get_user_name(callback.from_user)
     help_message = await get_help_text(full_name)

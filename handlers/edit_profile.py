@@ -4,10 +4,13 @@ from utils.logger import write_user_log
 from utils.user_utils import get_user_name
 from keyboards.edit_profile import get_edit_profile_inline_keyboard
 
+from decorators.sync_username import sync_username
+
 router = Router()
 
 
 @router.callback_query(lambda c: c.data == "edit_profile_menu")
+@sync_username
 async def edit_profile_menu(callback: types.CallbackQuery, state: FSMContext):
 
     await state.clear()  # Сброс состояния

@@ -38,9 +38,15 @@ def get_group_name_by_id(group_id: int, groups_dict: dict) -> str | None:
 
 
 def is_valid_group_name(name: str) -> bool:
-    # Валидация: XXX-00-00
+    """
+    Проверяет имя группы:
+    - Формат: XXX-00-00
+    - или:   XXX-00-00(00)
+    """
     import re
-    return bool(re.match(r"^[А-ЯA-Z]{2,}-\d{2}-\d{2}$", name))
+    pattern = r"^[А-ЯA-Z]{2,}-\d{2}-\d{2}(\(\d{2}\))?$"
+    return bool(re.match(pattern, name))
+
 
 async def is_group_file_exists(group_name: str) -> bool:
     """
