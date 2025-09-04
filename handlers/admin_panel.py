@@ -1,7 +1,8 @@
 from aiogram import types, Router, F, Bot
 from aiogram.filters import Command
 
-from utils.database import get_users_count, get_real_user_name
+from utils.database import get_real_user_name
+from utils.database_utils.database_statistic import get_users_count, count_active_users, count_new_users, get_last_active_users
 
 from keyboards.back_to_menu import get_back_inline_keyboard
 
@@ -53,10 +54,15 @@ async def send_admin_panel(
         callback: types.CallbackQuery | None
 ):
     full_name = get_real_user_name(user_id)
+    last_users = get_last_active_users(5)
+    names = [u["user_name"] for u in last_users]  # список имён
     text = (
         f"Привет, {full_name}!\n"
         "Это панель управления ботом.\n\n"
-        f"👥 Количество пользователей: {get_users_count()}"
+        f"👥 Количество пользователей: {get_users_count()}\n"
+        f"👥 Количество новых пользователей за неделю: {count_new_users(7)}\n"
+        f"👥 Количество уникальных пользователей за неделю: {count_new_users(7)}\n"
+        f"👥 Последние активные пользователи:\n- " + "\n- ".join(names)
     )
 
     if callback:
