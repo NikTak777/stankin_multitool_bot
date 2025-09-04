@@ -110,8 +110,8 @@ async def save_birthday(message: types.Message, state: FSMContext):
         user_id = message.from_user.id
         user_tag = message.from_user.username
         user_name = message.from_user.full_name
-        from utils.database import add_user_with_bd, get_user_info, update_is_approved
-        add_user_with_bd(user_id, user_tag, user_name, day, month, year)
+        from utils.database import set_user_birthdate, get_user_info, update_is_approved
+        set_user_birthdate(user_id, day, month, year)
         user_info = get_user_info(user_id)
         if not user_info.get("is_approved"):
             update_is_approved(user_id, True)
