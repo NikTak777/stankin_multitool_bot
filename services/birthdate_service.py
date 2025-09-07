@@ -1,6 +1,6 @@
 from datetime import datetime
 from aiogram.types import ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
-from utils.database import add_user_with_bd, get_user_info, update_is_approved
+from utils.database import set_user_birthdate, get_user_info, update_is_approved
 from utils.logger import write_user_log
 from utils.date_utils import format_date
 
@@ -13,7 +13,7 @@ async def save_user_birthday(user_id: int, username: str, full_name: str, day: i
     Логика сохранения дня рождения пользователя + ответное сообщение.
     """
     # Сохраняем в БД
-    add_user_with_bd(user_id, username, full_name, day, month, year)
+    set_user_birthdate(user_id, day, month, year)
 
     user_info = get_user_info(user_id)
     if user_info["is_approved"] is None or user_info["is_approved"] == "":

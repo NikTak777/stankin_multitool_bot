@@ -1,3 +1,4 @@
+# main.py
 from bot import bot, dp
 import asyncio
 import logging
@@ -7,14 +8,18 @@ from handlers import (start_menu, info, birthdate, group_registration, group_pan
 
 from utils.logger import write_user_log
 from utils import set_user_birthdate
+from utils.database_utils.init_database import init_database
 
 from tasks.daily_schedule import send_daily_schedule
 from tasks.birthday_notifications import check_birthdays
+
+from middlewares.user_activity import ActivityMiddleware
 
 # Отключение ненужных логов от aiogram
 # logging.getLogger("aiogram.event").setLevel(logging.WARNING)
 
 # Подключаем роутеры
+dp.update.middleware(ActivityMiddleware())
 dp.include_router(start_menu.router)
 dp.include_router(info.router)
 dp.include_router(birthdate.router)
@@ -35,6 +40,8 @@ dp.include_router(admin_panel.router)
 async def main():
     """Запуск бота"""
     write_user_log("Бот запущен!")  # Логирует запуск
+
+    init_database()
 
     # запускаем рассылку параллельно с ботом
     asyncio.create_task(send_daily_schedule())

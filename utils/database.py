@@ -7,35 +7,19 @@ from config import BIRTHDAY_DATABASE
 tz_moscow = pytz.timezone("Europe/Moscow") # Часовой пояс Москвы
 
 
-def add_user_with_bd(user_id, user_tag, user_name, user_day, user_month, user_year):
+def set_user_birthdate(user_id, user_day, user_month, user_year):
     con = sqlite3.connect(BIRTHDAY_DATABASE)
     cur = con.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            user_id int primary key,
-            user_tag str,
-            user_name str,
-            real_user_name str,
-            cust_user_name str,
-            user_day int,
-            user_month int,
-            user_year int,
-            user_wishlist str,
-            user_group str,
-            user_subgroup str,
-            is_approved bool
-        )
-    """)
 
     cur.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
     existing_user = cur.fetchone()
 
     if existing_user:
-        cur.execute("UPDATE users SET user_tag = ?, user_name = ?, user_day = ?, user_month = ?, user_year = ? WHERE user_id = ?",
-                    (user_tag, user_name, user_day, user_month, user_year, user_id))
+        cur.execute("UPDATE users SET user_day = ?, user_month = ?, user_year = ? WHERE user_id = ?",
+                    (user_day, user_month, user_year, user_id))
     else:
-        cur.execute("INSERT INTO users (user_id, user_tag, user_name, user_day, user_month, user_year, is_approved) VALUES (?, ?, ?, ?, ?, ?)",
-                    (user_id, user_tag, user_name, user_day, user_month, user_year))
+        cur.execute("INSERT INTO users (user_id, user_day, user_month, user_year, is_approved) VALUES (?, ?, ?, ?, ?, ?)",
+                    (user_id, user_day, user_month, user_year))
 
     con.commit()
     cur.close()
@@ -263,8 +247,6 @@ def add_user_to_db(user_id, user_tag, user_name):
     con = sqlite3.connect(BIRTHDAY_DATABASE)
     cur = con.cursor()
 
-    print("DEBUG:", user_id, user_tag, user_name)
-
     cur.execute("INSERT OR IGNORE INTO users (user_id, user_tag, user_name) VALUES (?, ?, ?)",
                 (user_id, user_tag, user_name))
 
@@ -374,17 +356,3 @@ def clear_users():
     con.commit()
     cur.close()
     con.close()
-
-    
-def get_users_count() -> int:
-    """Возвращает количество пользователей (строк) в таблице users."""
-    con = sqlite3.connect(BIRTHDAY_DATABASE)
-    cur = con.cursor()
-
-    cur.execute("SELECT COUNT(*) FROM users")
-    result = cur.fetchone()
-
-    cur.close()
-    con.close()
-
-    return result[0] if result else 0

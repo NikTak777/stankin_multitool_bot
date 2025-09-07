@@ -17,6 +17,8 @@ from handlers.start_menu import send_start_menu
 from utils.user_utils import get_user_name, is_user_group_admin
 from utils.logger import write_user_log
 from utils.database import get_users_by_group, get_approval_status, toggle_user_approval, update_real_user_name, get_real_user_name
+from keyboards.group_panel_keyboards import get_edit_send_time_keyboard, ALLOWED_HOURS, _fmt_hour
+from states.group_panel_states import SendTimeState
 
 # Декораторы
 from decorators.private_only import private_only
@@ -80,6 +82,7 @@ async def send_admin_panel(
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✏️ Редактировать группу", callback_data="edit_group")],
+        [InlineKeyboardButton(text="⏰ Изменить время рассылки", callback_data="edit_send_time")],
         [InlineKeyboardButton(text="🗑 Удалить регистрацию", callback_data="delete_group")],
         [InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="start")]
     ])
@@ -436,3 +439,97 @@ async def confirm_delete_group(message: types.Message, state: FSMContext):
 
     # Отправляем стартовое меню отдельным сообщением
     await send_start_menu(message, new_message=True)
+
+
+def _next_allowed_hour(curr: int, delta: int) -> int:
+    # delta = +1 (вправо) или -1 (влево)
+    idx = ALLOWED_HOURS.index(curr) if curr in ALLOWED_HOURS else 0
+    return ALLOWED_HOURS[(idx + delta) % len(ALLOWED_HOURS)]
+
+
+@router.callback_query(F.data == "edit_send_time")
+async def handle_edit_send_time(callback: types.CallbackQuery, state: FSMContext):
+    user_id = callback.from_user.id
+    groups = await load_groups()
+    # находим группу старосты
+    user_group = next((g for g, d in groups.items() if d.get("registered_by") == user_id), None)
+    if not user_group:
+        await callback.answer("❌ Доступ запрещён", show_alert=True)
+        return
+
+    # берём текущий час, по умолчанию 20
+    current_hour = int(groups[user_group].get("send_hour", 20))
+    if current_hour not in ALLOWED_HOURS:
+        current_hour = 20
+
+    await state.set_state(SendTimeState.editing)
+    await state.update_data(user_group=user_group, hour=current_hour)
+
+    try:
+        await callback.message.edit_text(
+            text=(
+                "⏰ Время отправки расписания для вашей группы.\n"
+                "Доступны только часы из окна 20:00–08:00.\n\n"
+                f"Текущее время: {_fmt_hour(current_hour)}"
+            ),
+            reply_markup=get_edit_send_time_keyboard(current_hour)
+        )
+    except TelegramBadRequest:
+        pass
+    await callback.answer()
+
+
+@router.callback_query(SendTimeState.editing, F.data.in_(["send_time_left", "send_time_right"]))
+async def change_send_time(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    hour = int(data.get("hour", 20))
+    delta = -1 if callback.data == "send_time_left" else +1
+    new_hour = _next_allowed_hour(hour, delta)
+    await state.update_data(hour=new_hour)
+
+    try:
+        await callback.message.edit_text(
+            text=(
+                "⏰ Время отправки расписания для вашей группы.\n"
+                "Доступны только часы из окна 20:00–08:00.\n\n"
+                f"Текущее время: {_fmt_hour(new_hour)}"
+            ),
+            reply_markup=get_edit_send_time_keyboard(new_hour)
+        )
+    except TelegramBadRequest:
+        pass
+    await callback.answer()
+
+
+@router.callback_query(SendTimeState.editing, F.data == "send_time_save")
+async def save_send_time(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    user_group = data.get("user_group")
+    new_hour = int(data.get("hour", 20))
+
+    groups = await load_groups()
+    if user_group not in groups:
+        await callback.answer("❌ Группа не найдена", show_alert=True)
+        await state.clear()
+        return
+
+    groups[user_group]["send_hour"] = new_hour
+    await save_groups(groups)  # не забудь импорт: from utils.group_utils import save_groups
+
+    write_user_log(
+        f"Админ {callback.from_user.full_name} ({callback.from_user.id}) "
+        f"изменил время отправки группы {user_group} на {_fmt_hour(new_hour)}"
+    )
+
+    await state.clear()
+    await callback.answer("✅ Время сохранено!", show_alert=True)
+
+    # Вернёмся в панель
+    await send_admin_panel(
+        bot=callback.bot,
+        user_id=callback.from_user.id,
+        chat_id=callback.message.chat.id,
+        full_name=callback.from_user.full_name,
+        message=callback.message,
+        callback=callback
+    )

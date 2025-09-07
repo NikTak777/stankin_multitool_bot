@@ -13,19 +13,16 @@ from utils.user_utils import is_admin
 # Декораторы
 from decorators.group_only import group_only
 from decorators.sync_username import sync_username
+from decorators.ensure_user_in_db import ensure_user_in_db
 
 router = Router()
 
-@router.message(Command("init"))
-@sync_username
-@group_only
-async def initialization_bot_in_group(message: types.Message, state: FSMContext):
-    if not check_user_exists(message.from_user.id):
-        add_user_to_db(message.from_user.id, message.from_user.username, message.from_user.full_name)
 
-    if message.chat.type not in ["group", "supergroup"]:
-        await message.answer("❌ Эта команда доступна только в группах.")
-        return
+@router.message(Command("init"))
+@group_only
+@ensure_user_in_db
+@sync_username
+async def initialization_bot_in_group(message: types.Message, state: FSMContext):
 
     group_id = message.chat.id
     user_id = message.from_user.id
@@ -103,7 +100,7 @@ async def process_group_name(message: types.Message, state: FSMContext):
         await message.answer("❌ Такая группа уже зарегистрирована! Введите другой номер:")
         return
 
-    groups[group_name] = {"chat_id": group_id, "registered_by": user_id}
+    groups[group_name] = {"chat_id": group_id, "registered_by": user_id, "send_hour": 20}
     await save_groups(groups)
 
     await message.answer(f"✅ Группа {group_name} успешно зарегистрирована!")
