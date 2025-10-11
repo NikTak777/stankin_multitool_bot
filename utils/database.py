@@ -356,3 +356,37 @@ def clear_users():
     con.commit()
     cur.close()
     con.close()
+
+
+def get_id_from_username(username):
+    con = sqlite3.connect(BIRTHDAY_DATABASE)
+    cur = con.cursor()
+
+    cur.execute("SELECT user_id FROM users WHERE user_tag = ?", (username,))
+    result = cur.fetchone()
+
+    cur.close()
+    con.close()
+
+    if not result:
+        return "not_found"
+
+    return result
+
+
+def check_user_by_username(username: str) -> bool:
+    """
+    Проверяет, существует ли пользователь с данным username в таблице users.
+    :param username: username без @
+    :return: True, если пользователь есть в базе, иначе False
+    """
+    con = sqlite3.connect(BIRTHDAY_DATABASE)
+    cur = con.cursor()
+
+    cur.execute("SELECT 1 FROM users WHERE user_tag = ?", (username,))
+    result = cur.fetchone()
+
+    cur.close()
+    con.close()
+
+    return result is not None

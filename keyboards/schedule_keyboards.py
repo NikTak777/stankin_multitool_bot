@@ -28,8 +28,9 @@ def get_week_days_keyboard() -> InlineKeyboardMarkup:
         count += 1
 
     builder.button(text="🔀 Другой день", callback_data="schedule_custom")
+    builder.button(text="👥 Чужая группа", callback_data="other_group")
     builder.button(text="⬅️ Назад в меню", callback_data="start")
-    builder.adjust(3, 3, 1)
+    builder.adjust(3, 3, 2, 1)
     return builder.as_markup()
 
 
@@ -58,6 +59,30 @@ def get_custom_schedule_keyboard(target_date: datetime) -> InlineKeyboardMarkup:
             )
         ],
         [  # ряд 3: возврат в меню
+            InlineKeyboardButton(
+                text="⬅️ Назад в меню",
+                callback_data="start"
+            )
+        ]
+    ])
+
+    return kb
+
+
+def get_other_group_schedule_keyboard(target_date: datetime) -> InlineKeyboardMarkup:
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="◀️ Назад",
+                callback_data=f"schedule_other_date_{(target_date - timedelta(days=1)).strftime('%Y-%m-%d')}"
+            ),
+            InlineKeyboardButton(
+                text="▶️ Вперёд",
+                callback_data=f"schedule_other_date_{(target_date + timedelta(days=1)).strftime('%Y-%m-%d')}"
+            )
+        ],
+        [
             InlineKeyboardButton(
                 text="⬅️ Назад в меню",
                 callback_data="start"

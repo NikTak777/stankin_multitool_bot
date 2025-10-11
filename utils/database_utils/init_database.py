@@ -6,7 +6,7 @@ from utils.logger import write_user_log
 
 # Словарь всех атрибутов таблицы user {"name_column": "type"}
 expected_columns = {
-    "user_id": "INTEGER PRIMARY KEY",
+    "user_id": "INTEGER",
     "user_tag": "TEXT",
     "user_name": "TEXT",
     "real_user_name": "TEXT",
@@ -34,7 +34,7 @@ def init_database():
     # Проверка и создание таблицы пользователей user
     cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY,
+                user_id INTEGER,
                 user_tag TEXT,
                 user_name TEXT,
                 real_user_name TEXT,
