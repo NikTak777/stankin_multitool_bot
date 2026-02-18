@@ -59,6 +59,7 @@ async def process_group_input(message: types.Message, state: FSMContext):
     await message.answer("Введите номер вашей подгруппы (например, А или Б):", reply_markup=ReplyKeyboardRemove())
     await state.set_state(GroupState.waiting_for_subgroup)
 
+
 # Ввод подгруппы
 @router.message(StateFilter(GroupState.waiting_for_subgroup))
 async def process_subgroup_input(message: types.Message, state: FSMContext):
@@ -66,7 +67,6 @@ async def process_subgroup_input(message: types.Message, state: FSMContext):
     user_data = await state.get_data()
     user_group = user_data.get("user_group")
     from_schedule = user_data.get("from_schedule", False)
-    print(from_schedule)
     back_to = "start" if from_schedule else "info"
 
     if user_subgroup not in ["А", "Б"]:
@@ -86,7 +86,6 @@ async def process_subgroup_input(message: types.Message, state: FSMContext):
     write_user_log(msg)
 
     msg_to_user = f"✅ Данные сохранены: Группа {user_group}, Подгруппа {user_subgroup}."
-
 
     if not await is_group_file_exists(user_group):
         msg_to_user += f"\n\n⚠️ К сожалению, пока вы не можете смотреть расписание вашей группы, так как оно не появилось в системе."

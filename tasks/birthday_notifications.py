@@ -11,13 +11,27 @@ from utils.logger import write_user_log
 from utils.database import check_users, get_user_info, check_users_in_7_days
 from utils.group_utils import load_groups
 from utils.user_utils import is_user_accessible
+from utils.database_utils.friends import get_list_friends
+from utils.database_utils.task_management import get_task_status
 
 from bot import bot
 
 tz_moscow = pytz.timezone("Europe/Moscow")
 
+
 async def check_birthdays():
     while True:
+        # Проверяем, включен ли таск
+        if not get_task_status("birthday_notifications"):
+            # Если таск выключен, проверяем раз в день
+            now = datetime.now(tz=tz_moscow)
+            next_run = now.replace(hour=8, minute=0, second=0, microsecond=0)
+            if now >= next_run:
+                next_run += timedelta(days=1)
+            time_to_sleep = (next_run - now).total_seconds()
+            await asyncio.sleep(time_to_sleep)
+            continue
+        
         now = datetime.now(tz=tz_moscow)
 
         next_run = now.replace(hour=8, minute=0, second=0, microsecond=0)
@@ -40,12 +54,11 @@ async def check_birthdays():
 
             for UserID in birthdays_today:
                 user_info = get_user_info(UserID)
+
+                # Блок отправки в группу
                 if user_info["is_approved"]:
-                    UserNAME = f"{user_info['real_user_name']} @{user_info['user_tag']}"
-                    if not user_info["real_user_name"]:
-                        UserNAME = f"{user_info['user_name']} @{user_info['user_tag']}"
-                        if not user_info['user_tag']:
-                            UserNAME = f"{user_info['user_name']}"
+                    UserNAME = f"{user_info.get('real_user_name') or user_info.get('user_name')}" \
+                               f"{' @' + user_info['user_tag'] if user_info.get('user_tag') else ''}"
 
                     user_group = user_info.get("user_group")
 
@@ -78,6 +91,43 @@ async def check_birthdays():
                         group_messages[chat_id] = []
                     group_messages[chat_id].append((message, keyboard))
 
+                # Блок отправки друзьям
+                user_info = get_user_info(UserID)
+                user_name = user_info['user_name']
+                friend_ids = get_list_friends(UserID)
+                if friend_ids:
+                    for friend_id in friend_ids:
+                        keyboard_friend = InlineKeyboardMarkup(inline_keyboard=[
+                            [InlineKeyboardButton(text=f"🎉 Поздравить {user_name}", url=f"tg://user?id={UserID}")],
+                            [InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="start")]
+                        ])
+                        name_str = f"{user_name} @{user_info['user_tag']}" if user_info.get('user_tag') else f"{user_name}"
+                        msg_friend = (
+                            f"🎉 У вашего друга {name_str} сегодня день рождения! 🎂\n"
+                            "Обязательно поздравьте его! 🎁"
+                        )
+                        await bot.send_message(
+                            chat_id=friend_id,
+                            text=msg_friend,
+                            reply_markup=keyboard_friend
+                        )
+                        write_user_log(f"Сообщение о дне рождения отправлено пользователю {friend_id}")
+
+                # Блок поздравления пользователя в личных сообщениях
+                msg_user = (
+                    f"🎉 Дорогой(-ая) {user_name}, поздравляю тебя с днём рождения! 🎂\n"
+                    "Желаю здоровья, удачи и исполнения всех мечт!\n"
+                    "Пусть каждый новый день будет полон позитивных эмоций и улыбок. 🎁"
+                )
+                keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                            [InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="start")]
+                        ])
+                await bot.send_message(
+                    chat_id=UserID,
+                    text=msg_user,
+                    reply_markup=keyboard
+                )
+
             # Отправляем сообщения в группы
             for chat_id, messages in group_messages.items():
                 for msg, kb in messages:
@@ -95,11 +145,8 @@ async def check_birthdays():
             for UserID in upcoming_birthdays:
                 user_info = get_user_info(UserID)
                 if user_info["is_approved"]:
-                    UserNAME = f"{user_info['real_user_name']} @{user_info['user_tag']}"
-                    if not user_info["real_user_name"]:
-                        UserNAME = f"{user_info['user_name']} @{user_info['user_tag']}"
-                        if not user_info['user_tag']:
-                            UserNAME = f"{user_info['user_name']}"
+                    UserNAME = f"{user_info.get('real_user_name') or user_info.get('user_name')}" \
+                               f"{' @' + user_info['user_tag'] if user_info.get('user_tag') else ''}"
 
                     user_group = user_info["user_group"]
 
@@ -121,6 +168,30 @@ async def check_birthdays():
                     if chat_id not in group_messages:
                         group_messages[chat_id] = []
                     group_messages[chat_id].append(message)
+
+                # Блок отправки друзьям
+                user_info = get_user_info(UserID)
+                user_name = user_info['user_name']
+                user_wishlist = user_info['user_wishlist'] or "Отсутствует"
+                friend_ids = get_list_friends(UserID)
+                if friend_ids:
+                    for friend_id in friend_ids:
+                        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                            [InlineKeyboardButton(text=f"👤 В профиль {user_name}", url=f"tg://user?id={UserID}")],
+                            [InlineKeyboardButton(text="⬅️ Назад в меню", callback_data="start")]
+                        ])
+                        name_str = f"{user_name} @{user_info['user_tag']}" if user_info.get('user_tag') else f"{user_name}"
+                        msg_friend = (
+                            f"📅 Ровно через неделю {name_str} празднует свой день рождения! 🥳\n"
+                            f"Самое время готовить подарки! 🎁\n"
+                            f"🎈 Вишлист: {user_wishlist}"
+                        )
+                        await bot.send_message(
+                            chat_id=friend_id,
+                            text=msg_friend,
+                            reply_markup=keyboard
+                        )
+                        write_user_log(f"Сообщение о будущем дне рождения отправлено пользователю {friend_id}")
 
             # Отправляем сообщения в группы
             for chat_id, messages in group_messages.items():

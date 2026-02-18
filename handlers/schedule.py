@@ -13,6 +13,7 @@ from keyboards.back_to_menu import get_back_inline_keyboard
 from states.schedule import ScheduleState
 from utils.logger import write_user_log
 from utils.user_utils import check_group_user
+from utils.database import get_user_info
 
 # Декораторы
 from decorators.private_only import private_only
@@ -57,22 +58,49 @@ async def show_today_schedule(callback: types.CallbackQuery, state: FSMContext, 
 # --- Кнопка выбора дня ---
 @router.callback_query(F.data.startswith("schedule_offset_"))
 async def handle_day_offset(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
-    offset = int(callback.data.split("_")[-1])
+    parts = callback.data.split("_")
+    offset = int(parts[2])
+
+    # Безопасно обрабатываем дату (если есть)
+    if len(parts) > 3:
+        start_date = datetime.strptime(parts[3], "%Y-%m-%d").replace(tzinfo=tz_moscow)
+    else:
+        start_date = datetime.now(tz=tz_moscow)
+
+    friend_id = None
+    if len(parts) > 4 and parts[4].startswith("f"):
+        friend_id = int(parts[4][1:])
+
     today = datetime.now(tz=tz_moscow)
     target_date = today + timedelta(days=offset)
-    while target_date.weekday() == 6:  # пропускаем воскресенье
+
+    while target_date.weekday() == 6:
         target_date += timedelta(days=1)
 
     user_has_group = await check_group_user(callback.from_user, state, bot, callback=callback)
     if not user_has_group:
         return
 
-    await show_schedule_for_date(
-        user_id=callback.from_user.id,
-        user_fullname=callback.from_user.full_name,
-        target_date=target_date,
-        callback=callback
-    )
+    schedule_message = get_schedule_for_date(friend_id or callback.from_user.id, target_date.day, target_date.month)
+
+    if not schedule_message:
+        await callback.answer("Нет данных для этого дня", show_alert=True)
+        return
+
+    try:
+        await callback.message.edit_text(
+            text=schedule_message,
+            reply_markup=get_week_days_keyboard(
+                start_date=start_date,
+                friend_id=friend_id
+            ),
+            parse_mode="HTML"
+        )
+    except TelegramBadRequest as e:
+        if "message is not modified" not in str(e):
+            print(e)
+
+    await callback.answer()
 
 
 # --- Выбор произвольного дня ---
@@ -174,6 +202,36 @@ async def handle_custom_schedule_date(callback: types.CallbackQuery, state: FSMC
         callback=callback
     )
 
+
+@router.callback_query(F.data.startswith("schedule_week_"))
+async def handle_week_switch(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
+    """Перелистывание недель в основном расписании."""
+    data = callback.data.split("_")
+
+    # пример callback_data: schedule_week_2025-10-13_f1771028388
+    if len(data) == 4 and data[3].startswith("f"):
+        date_str = data[2]  # 2025-10-13
+        friend_id = int(data[3][1:])  # 1771028388
+    else:
+        date_str = data[2]
+        friend_id = None
+
+    start_date = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=tz_moscow)
+
+    user_has_group = await check_group_user(callback.from_user, state, bot, callback=callback)
+    if not user_has_group:
+        return
+
+    # Показываем расписание на первый день новой недели (понедельник)
+    await show_schedule_for_date(
+        user_id=callback.from_user.id,
+        user_fullname=callback.from_user.full_name,
+        target_date=start_date,
+        callback=callback,
+        friend_id=friend_id
+    )
+
+
 # --- Общая функция для показа расписания ---
 async def show_schedule_for_date(
     user_id: int,
@@ -181,19 +239,36 @@ async def show_schedule_for_date(
     target_date: datetime,
     message: types.Message | None = None,
     callback: types.CallbackQuery | None = None,
+    friend_id: int = None
 ):
-    """Редактирует старое сообщение или отправляет новое с расписанием и клавиатурой."""
-    schedule_message = get_schedule_for_date(user_id, target_date.day, target_date.month)
+    target_user_id = friend_id if friend_id else user_id
+
+    schedule_message = get_schedule_for_date(target_user_id, target_date.day, target_date.month)
 
     if not schedule_message:
+        if friend_id:
+            friend_name = get_user_info(friend_id)['user_name']
+            error_msg = f"⚠️ Расписание пока недоступно для группы {friend_name}."
+            back_to = "friends_edit_menu"
+        else:
+            error_msg = "⚠️ Расписание пока недоступно для вашей группы."
+            back_to = "start"
+
         if callback:
-            await callback.message.edit_text("⚠️ Расписание пока недоступно для вашей группы.", reply_markup=get_back_inline_keyboard("start"))
+            await callback.message.edit_text(
+                text=error_msg,
+                reply_markup=get_back_inline_keyboard(back_to)
+            )
             await callback.answer()
         elif message:
-            await message.answer("⚠️ Расписание пока недоступно для вашей группы.", reply_markup=get_back_inline_keyboard("start"))
+            await message.answer(
+                text=error_msg,
+                reply_markup=get_back_inline_keyboard(back_to)
+            )
         return
 
-    inline_kb = get_week_days_keyboard()
+    # Определяем начало недели для корректного построения клавиатуры
+    inline_kb = get_week_days_keyboard(start_date=target_date, friend_id=friend_id)
 
     try:
         if callback:

@@ -13,7 +13,6 @@ from keyboards.profile_menu_keyboard import get_profile_menu_inline_keyboard
 from decorators.private_only import private_only
 from decorators.sync_username import sync_username
 from decorators.ensure_user_in_db import ensure_user_in_db
-from decorators.require_birthdate import require_birthdate
 
 router = Router()
 
@@ -34,7 +33,6 @@ async def info_callback(callback: CallbackQuery):
     await process_user_info(callback.from_user, callback.message, is_callback=True)
 
 
-@require_birthdate("info")
 async def process_user_info(user, message_obj, is_callback=False):
 
     user_id = user.id
@@ -50,7 +48,14 @@ async def process_user_info(user, message_obj, is_callback=False):
     user_group = user_info.get("user_group") or "Отсутствует"
     user_subgroup = user_info.get("user_subgroup") or "Отсутствует"
     user_subgroup = {"A": "А", "B": "Б"}.get(user_subgroup, user_subgroup) # Преобразуем подгруппу
-    formatted_date = format_date(user_day, user_month, user_year) # Форматирование даты
+    if not user_day or not user_month or not user_year:
+        formatted_date = "Отсутствует"
+    else:
+        formatted_date = format_date(user_day, user_month, user_year)
+    
+    # Получаем статус рассылки расписания
+    schedule_notifications = user_info.get("schedule_notifications", 0)
+    schedule_status = "Вкл." if schedule_notifications else "Выкл."
 
     message_to_user = (
         f"📌 Информация о вашем аккаунте:\n\n"
@@ -59,7 +64,8 @@ async def process_user_info(user, message_obj, is_callback=False):
         f"🎂 Дата рождения: {formatted_date}\n"
         f"🎁 Вишлист: {user_wishlist}\n"
         f"🏫 Группа: {user_group}\n"
-        f"📚 Подгруппа: {user_subgroup}"
+        f"📚 Подгруппа: {user_subgroup}\n"
+        f"📬 Рассылка расписания: {schedule_status}"
     )
     if is_callback:
         await message_obj.edit_text(message_to_user, reply_markup=get_profile_menu_inline_keyboard())

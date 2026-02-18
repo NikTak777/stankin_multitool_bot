@@ -173,7 +173,7 @@ def get_user_info(user_id):
 
     cur.execute(
         "SELECT user_tag, user_name, real_user_name, cust_user_name,"
-        "user_day, user_month, user_year, user_wishlist, user_group, user_subgroup, is_approved FROM users WHERE user_id = ?",
+        "user_day, user_month, user_year, user_wishlist, user_group, user_subgroup, is_approved, schedule_notifications FROM users WHERE user_id = ?",
         (user_id,)
     )
     result = cur.fetchone()
@@ -193,7 +193,8 @@ def get_user_info(user_id):
             "user_wishlist": result[7],
             "user_group": result[8],
             "user_subgroup": result[9],
-            "is_approved": result[10]
+            "is_approved": result[10],
+            "schedule_notifications": result[11] if result[11] is not None else 0
         }
     return None
 
@@ -347,6 +348,50 @@ def get_approval_status(user_id: int) -> bool:
         return False
 
 
+def toggle_schedule_notifications(user_id: int) -> bool:
+    """Переключает статус рассылки расписания для пользователя"""
+    try:
+        with sqlite3.connect(BIRTHDAY_DATABASE) as con:
+            cur = con.cursor()
+
+            # Получаем текущее состояние
+            cur.execute(
+                "SELECT schedule_notifications FROM users WHERE user_id = ?",
+                (user_id,)
+            )
+            result = cur.fetchone()
+            current_status = bool(result[0]) if result and result[0] is not None else False
+
+            # Устанавливаем противоположное значение
+            new_status = not current_status
+
+            cur.execute(
+                "UPDATE users SET schedule_notifications = ? WHERE user_id = ?",
+                (new_status, user_id)
+            )
+            con.commit()
+            return new_status
+    except sqlite3.Error as e:
+        print(f"Ошибка переключения статуса рассылки расписания: {e}")
+        return False
+
+
+def get_schedule_notifications_status(user_id: int) -> bool:
+    """Возвращает текущий статус рассылки расписания"""
+    try:
+        with sqlite3.connect(BIRTHDAY_DATABASE) as con:
+            cur = con.cursor()
+            cur.execute(
+                "SELECT schedule_notifications FROM users WHERE user_id = ?",
+                (user_id,)
+            )
+            result = cur.fetchone()
+            return bool(result[0]) if result and result[0] is not None else False
+    except sqlite3.Error as e:
+        print(f"Ошибка получения статуса рассылки расписания: {e}")
+        return False
+
+
 def clear_users():
     con = sqlite3.connect(BIRTHDAY_DATABASE)
     cur = con.cursor()
@@ -356,3 +401,37 @@ def clear_users():
     con.commit()
     cur.close()
     con.close()
+
+
+def get_id_from_username(username):
+    con = sqlite3.connect(BIRTHDAY_DATABASE)
+    cur = con.cursor()
+
+    cur.execute("SELECT user_id FROM users WHERE user_tag = ?", (username,))
+    result = cur.fetchone()
+
+    cur.close()
+    con.close()
+
+    if not result:
+        return "not_found"
+
+    return result
+
+
+def check_user_by_username(username: str) -> bool:
+    """
+    Проверяет, существует ли пользователь с данным username в таблице users.
+    :param username: username без @
+    :return: True, если пользователь есть в базе, иначе False
+    """
+    con = sqlite3.connect(BIRTHDAY_DATABASE)
+    cur = con.cursor()
+
+    cur.execute("SELECT 1 FROM users WHERE user_tag = ?", (username,))
+    result = cur.fetchone()
+
+    cur.close()
+    con.close()
+
+    return result is not None
