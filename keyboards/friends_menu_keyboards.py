@@ -10,8 +10,8 @@ def get_friends_menu_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
-def get_edit_menu_keyboard(total_friends: int, fid: int = 0):
-    """Создаёт клавиатуру с кнопками управления"""
+def get_edit_menu_keyboard(total_friends: int, fid: int = 0, total_pages: int = 0, current_page: int = 0):
+    """Создаёт клавиатуру с кнопками управления и пагинацией (при total_pages > 1)."""
     builder = InlineKeyboardBuilder()
 
     if total_friends == 0:
@@ -19,14 +19,18 @@ def get_edit_menu_keyboard(total_friends: int, fid: int = 0):
             text=" ◀️ Назад ",
             callback_data="friends_menu"
         ))
-
         return builder.as_markup()
 
-
     builder.row(
-        InlineKeyboardButton(text="⬆️", callback_data="friends_prev"),
-        InlineKeyboardButton(text="⬇️", callback_data="friends_next")
+        InlineKeyboardButton(text="⬆️ Пред.", callback_data="friends_prev"),
+        InlineKeyboardButton(text="След. ⬇️", callback_data="friends_next")
     )
+
+    if total_pages > 1:
+        builder.row(
+            InlineKeyboardButton(text="◀️ Влево", callback_data="friends_page_prev"),
+            InlineKeyboardButton(text="Вправо ▶️", callback_data="friends_page_next")
+        )
 
     builder.row(InlineKeyboardButton(
         text="📅 Расписание",
