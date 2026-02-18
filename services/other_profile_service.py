@@ -13,7 +13,10 @@ def get_own_profile_info(user_info) -> str:
     subgroup = user_info.get("user_subgroup") or "Отсутствует"
     subgroup = {"A": "А", "B": "Б"}.get(subgroup, subgroup)
 
-    bday_str = format_date(day, month, year)
+    if not day or not month or not year:
+        bday_str = "Отсутствует"
+    else:
+        bday_str = format_date(day, month, year)
 
     return ("Хм, вы ввели свой собственный тег. Пытаетесь проверить сами себя? 😉\n"
             "Ваш профиль:\n\n"
@@ -39,7 +42,10 @@ def other_profile_info(user_info) -> str:
     subgroup = user_info.get("user_subgroup") or "Отсутствует"
     subgroup = {"A": "А", "B": "Б"}.get(subgroup, subgroup)
 
-    bday_str = format_date(day, month, year)
+    if not day or not month or not year:
+        bday_str = "Отсутствует"
+    else:
+        bday_str = format_date(day, month, year)
 
     return (
         f"👤 Профиль {full_name}\n\n"
