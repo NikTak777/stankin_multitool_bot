@@ -49,7 +49,7 @@ async def show_statistics(callback: CallbackQuery):
     
     await callback.message.edit_text(
         message_text,
-        reply_markup=get_back_inline_keyboard()
+        reply_markup=get_back_inline_keyboard("info")
     )
     await callback.answer()
 

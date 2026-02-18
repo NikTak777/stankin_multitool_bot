@@ -144,3 +144,25 @@ async def update_friends_view(callback: CallbackQuery, state: FSMContext, prefix
             current_page=current_page
         )
     )
+
+
+async def _reopen_friends_edit_menu(callback: CallbackQuery, state: FSMContext):
+    """
+    Заново открывает меню списка друзей (инициализация state).
+    Вызывается при нажатии кнопок навигации, когда состояние потеряно (например после перезагрузки бота).
+    """
+    await state.clear()
+    await state.set_state(EditMenuState.editing)
+    await state.update_data(current_index=0)
+    await update_friends_view(callback, state)
+    await callback.answer()
+
+
+@router.callback_query(F.data.in_(["friends_prev", "friends_next", "friends_page_prev", "friends_page_next"]))
+@sync_username
+async def friends_nav_fallback(callback: CallbackQuery, state: FSMContext):
+    """
+    Fallback: срабатывает, когда хендлеры с EditMenuState.editing не подходят (например state сброшен после перезагрузки бота).
+    Заново открывает меню списка друзей.
+    """
+    await _reopen_friends_edit_menu(callback, state)
