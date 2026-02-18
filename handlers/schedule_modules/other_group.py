@@ -19,6 +19,8 @@ from services.schedule_service import format_schedule, load_schedule
 from utils.logger import write_user_log
 from utils.group_utils import is_valid_group_name
 
+from filters.require_fsm import RequireFSM
+
 router = Router()
 
 tz_moscow = pytz.timezone("Europe/Moscow")
@@ -31,7 +33,7 @@ async def choose_other_group_schedule(callback: CallbackQuery, state: FSMContext
     await callback.answer()
     await callback.message.edit_text(
         text="Введите номер группы, расписание которой хотите посмотреть (например, ИДБ-23-10):",
-        reply_markup=get_cancel_inline_keyboard()
+        reply_markup=get_cancel_inline_keyboard("schedule")
     )
     await state.set_state(OtherGroupState.waiting_for_group)
 
@@ -59,7 +61,10 @@ async def process_group_input(message: Message, state: FSMContext):
     )
 
 
-@router.callback_query(F.data.startswith("schedule_other_date_"))
+@router.callback_query(
+    F.data.startswith("schedule_other_date_"),
+    RequireFSM("group_name")
+)
 async def handle_other_schedule_date(callback: CallbackQuery, state: FSMContext):
     """Обработка кнопок переключения дней"""
     date_str = callback.data.split("_")[-1]
@@ -74,6 +79,11 @@ async def handle_other_schedule_date(callback: CallbackQuery, state: FSMContext)
         target_date=target_date,
         callback=callback
     )
+
+
+@router.callback_query(F.data.startswith("schedule_other_date_"))
+async def handle_other_schedule_date_fallback(callback: CallbackQuery, state: FSMContext):
+    await choose_other_group_schedule(callback, state)
 
 
 async def show_other_schedule_for_date(

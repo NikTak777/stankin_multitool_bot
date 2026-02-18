@@ -11,6 +11,8 @@ from states.friends_states import EditMenuState
 
 from decorators.sync_username import sync_username
 
+from utils.logger import write_user_log
+
 router = Router()
 
 
@@ -18,12 +20,23 @@ router = Router()
 @sync_username
 async def callback_friends_edit_menu(callback: CallbackQuery, state: FSMContext):
     """
-    Вход в меню редактирования друзей. Инициализируем индекс и показываем список.
+    Вход в меню редактирования друзей. Инициализируем индекс только если его нет.
     """
+    # Очищаем состояние перед входом в меню (на случай, если были другие состояния)
+    data = await state.get_data()
+    current_index = data.get("current_index", 0)
+    await state.clear()
+
     await state.set_state(EditMenuState.editing)
-    await state.update_data(current_index=0)
+    # Восстанавливаем индекс, если он был
+    await state.update_data(current_index=current_index)
+
     await update_friends_view(callback, state)
     await callback.answer()
+
+    write_user_log(
+        f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) @{callback.from_user.username} перешёл во вкладку редактирования друзей"
+    )
 
 
 @router.callback_query(EditMenuState.editing, F.data.in_(["friends_prev", "friends_next"]))
@@ -76,6 +89,8 @@ async def update_friends_view(callback: CallbackQuery, state: FSMContext, prefix
         idx = 0
         await state.update_data(current_index=idx)
 
+    selected_fid, selected_name = pairs[idx]
+
     # подсветка текущего
     lines = []
     for i, (fid, name) in enumerate(pairs):
@@ -89,4 +104,4 @@ async def update_friends_view(callback: CallbackQuery, state: FSMContext, prefix
         "\n".join(lines)
     )
 
-    await callback.message.edit_text(text, reply_markup=get_edit_menu_keyboard(total))
+    await callback.message.edit_text(text, reply_markup=get_edit_menu_keyboard(total, selected_fid))

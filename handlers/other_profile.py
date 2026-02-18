@@ -13,7 +13,6 @@ from keyboards.cancel_keyboard import get_cancel_inline_keyboard
 from decorators.private_only import private_only
 from decorators.sync_username import sync_username
 from decorators.ensure_user_in_db import ensure_user_in_db
-from decorators.require_birthdate import require_birthdate
 
 from services.other_profile_service import (
     get_own_profile_info,
@@ -49,7 +48,6 @@ async def callback_friend_profile(callback: CallbackQuery, state: FSMContext):
 
 
 # Универсальная функция для запроса тега
-@require_birthdate("friend_wishlist")
 async def process_other_profile(user, message_obj, state: FSMContext, is_callback=False):
     user_name = user.username or "StankinMultiToolBot"
     msg_to_user = f"Пожалуйста, введите тег пользователя, чей профиль вы хотите посмотреть.\nНапример, @{user_name}"

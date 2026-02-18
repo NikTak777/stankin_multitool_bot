@@ -10,6 +10,8 @@ from keyboards.back_to_menu import get_back_inline_keyboard
 
 from decorators.sync_username import sync_username
 
+from utils.logger import write_user_log
+
 router = Router()
 
 
@@ -41,8 +43,9 @@ async def callback_delete_friends(callback: CallbackQuery, state: FSMContext):
     total2 = len(pairs2)
     if total2 == 0:
         await state.update_data(current_index=0)
-        text = f"Друг «{friend_name}» удалён.\n\nСписок пуст."
-        await callback.message.edit_text(text, reply_markup=get_back_inline_keyboard("friends_menu"))
+        await callback.message.edit_text(
+            f"Друг «{friend_name}» удалён.\n\nСписок пуст.",
+            reply_markup=get_back_inline_keyboard("friends_menu"))
         await callback.answer("Удалено")
         return
 
@@ -53,3 +56,8 @@ async def callback_delete_friends(callback: CallbackQuery, state: FSMContext):
     await state.update_data(current_index=idx)
     await update_friends_view(callback, state, prefix=f"🗑 Удалил: {friend_name}\n\n")
     await callback.answer("Удалено")
+
+    write_user_log(
+        f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) @{callback.from_user.username} "
+        f"удалил друга {friend_name}"
+    )

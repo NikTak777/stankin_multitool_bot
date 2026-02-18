@@ -7,6 +7,7 @@ from states.friends_states import EditMenuState
 from utils.database_utils.friends import get_friends_info
 from utils.database import get_user_info
 from utils.date_utils import format_date
+from utils.database_utils.database_statistic import get_user_rank_by_activity, get_user_rank_by_days
 from keyboards.back_to_menu import get_back_inline_keyboard
 from decorators.sync_username import sync_username
 
@@ -38,6 +39,8 @@ async def callback_friend_profile(callback: CallbackQuery, state: FSMContext):
     friend_id, friend_name = pairs[idx]
 
     info = get_user_info(friend_id) or {}
+    user_name = info.get("user_tag")
+    user_name = f"@{user_name}" if user_name else ""
     day = info.get("user_day")
     month = info.get("user_month")
     year = info.get("user_year")
@@ -52,13 +55,35 @@ async def callback_friend_profile(callback: CallbackQuery, state: FSMContext):
     else:
         bday_str = format_date(day, month, year)
 
+    # Получаем метрики друга
+    rank_activity = get_user_rank_by_activity(friend_id)
+    rank_days = get_user_rank_by_days(friend_id)
+    
+    rank_activity_text = f"#{rank_activity}" if rank_activity > 0 else "Нет данных"
+    rank_days_text = f"#{rank_days}" if rank_days > 0 else "Нет данных"
+
     text = (
-        f"👤 Профиль {friend_name}\n\n"
+        f"👤 Профиль {friend_name} {user_name}\n\n"
         f"🎂 Дата рождения: {bday_str}\n"
         f"🎁 Вишлист: {wishlist}\n"
         f"🏫 Группа: {group}\n"
-        f"📚 Подгруппа: {subgroup}"
+        f"📚 Подгруппа: {subgroup}\n\n"
+        f"📊 Статистика:\n"
+        f"🎯 Место в топе по действиям: {rank_activity_text}\n"
+        f"📅 Место в топе по дням: {rank_days_text}"
     )
 
-    await callback.message.edit_text(text, reply_markup=get_back_inline_keyboard("friends_edit_menu"))
+    # Создаем клавиатуру с кнопкой "Предложить вишлист"
+    from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(
+        text="🎁 Предложить вишлист",
+        callback_data=f"suggest_wishlist:{friend_id}"
+    ))
+    builder.row(InlineKeyboardButton(
+        text="⬅️ Назад",
+        callback_data="friends_edit_menu"
+    ))
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
     await callback.answer()
