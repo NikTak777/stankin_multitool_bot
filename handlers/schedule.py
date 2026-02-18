@@ -32,7 +32,10 @@ tz_moscow = pytz.timezone("Europe/Moscow")
 @sync_username
 async def cmd_schedule(message: types.Message, state: FSMContext, bot: Bot):
 
-    write_user_log(f"Пользователь {message.from_user.full_name} ({message.from_user.id}) запросил расписание")
+    write_user_log(
+        f"Пользователь {message.from_user.full_name} ({message.from_user.id})"
+        f" @{message.from_user.username} запросил расписание"
+    )
 
     user_has_group = await check_group_user(message.from_user, state, bot, message=message, from_schedule=True)
     if not user_has_group:
@@ -101,6 +104,11 @@ async def handle_day_offset(callback: types.CallbackQuery, state: FSMContext, bo
             print(e)
 
     await callback.answer()
+
+    write_user_log(
+        f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) "
+        f"@{callback.from_user.username} посмотрел расписание на {target_date.strftime('%d.%m.%Y')}"
+    )
 
 
 # --- Выбор произвольного дня ---
@@ -292,7 +300,7 @@ async def show_schedule_for_date(
             print(f"TelegramBadRequest: {e}")
 
     write_user_log(
-        f"Пользователь {user_fullname} ({user_id}) посмотрел недельное расписание на {target_date.strftime('%d.%m')}"
+        f"Пользователь {user_fullname} ({user_id}) посмотрел недельное расписание на {target_date.strftime('%d.%m.%Y')}"
     )
 
 
