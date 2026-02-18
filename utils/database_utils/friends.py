@@ -195,10 +195,10 @@ def get_today_birthdays(user_id: int):
     today_birthdays = []
 
     for friend_id in friend_ids:
-        cur.execute("SELECT user_name, user_day, user_month, user_wishlist FROM users WHERE user_id = ?", (friend_id,))
+        cur.execute("SELECT user_name, user_tag, user_day, user_month, user_wishlist FROM users WHERE user_id = ?", (friend_id,))
         row = cur.fetchone()
         if row:
-            user_name, user_day, user_month, user_wishlist = row
+            user_name, user_tag, user_day, user_month, user_wishlist = row
 
             if not user_day or not user_month:
                 continue
@@ -208,12 +208,13 @@ def get_today_birthdays(user_id: int):
             user_day = int(user_day)
             user_month = int(user_month)
 
-            birthday_today = datetime(year=today.year, month=user_month, day=user_day)
+            birthday_today = safe_date(today.year, user_month, user_day)
             days_until_birthday = (today - birthday_today).days
 
             if days_until_birthday == 0:
                 today_birthdays.append({
                     'user_name': user_name,
+                    'user_tag': user_tag,
                     'user_day': user_day,
                     'user_month': user_month,
                     'user_wishlist': user_wishlist
@@ -237,10 +238,10 @@ def get_upcoming_birthdays(user_id: int, days: int = 7) -> list[dict]:
 
     # Сначала проходим по друзьям и собираем тех, у кого ДР в ближайшие days дней
     for friend_id in friend_ids:
-        cur.execute("SELECT user_name, user_day, user_month, user_wishlist FROM users WHERE user_id = ?", (friend_id,))
+        cur.execute("SELECT user_name, user_tag, user_day, user_month, user_wishlist FROM users WHERE user_id = ?", (friend_id,))
         row = cur.fetchone()
         if row:
-            user_name, user_day, user_month, user_wishlist = row
+            user_name, user_tag, user_day, user_month, user_wishlist = row
 
             if not user_day or not user_month:
                 continue
@@ -250,17 +251,18 @@ def get_upcoming_birthdays(user_id: int, days: int = 7) -> list[dict]:
             user_day = int(user_day)
             user_month = int(user_month)
             # Делаем объект даты для ближайшего ДР
-            birthday_this_year = datetime(year=today.year, month=user_month, day=user_day)
+            birthday_this_year = safe_date(today.year, user_month, user_day)
             days_until_birthday = (birthday_this_year - today).days
 
             # Если ДР уже прошёл в этом году, считаем на следующий год
             if days_until_birthday < 0:
-                birthday_next_year = datetime(year=today.year + 1, month=user_month, day=user_day)
+                birthday_next_year = safe_date(today.year + 1, user_month, user_day)
                 days_until_birthday = (birthday_next_year - today).days
 
             if 0 <= days_until_birthday <= days:
                 upcoming.append({
                     'user_name': user_name,
+                    'user_tag': user_tag,
                     'user_day': user_day,
                     'user_month': user_month,
                     'user_wishlist': user_wishlist,
@@ -272,10 +274,10 @@ def get_upcoming_birthdays(user_id: int, days: int = 7) -> list[dict]:
         closest = None
         min_days = 365
         for friend_id in friend_ids:
-            cur.execute("SELECT user_name, user_day, user_month, user_wishlist FROM users WHERE user_id = ?", (friend_id,))
+            cur.execute("SELECT user_name, user_tag, user_day, user_month, user_wishlist FROM users WHERE user_id = ?", (friend_id,))
             row = cur.fetchone()
             if row:
-                user_name, user_day, user_month, user_wishlist = row
+                user_name, user_tag, user_day, user_month, user_wishlist = row
 
                 if not user_day or not user_month:
                     continue
@@ -285,16 +287,17 @@ def get_upcoming_birthdays(user_id: int, days: int = 7) -> list[dict]:
                 user_day = int(user_day)
                 user_month = int(user_month)
 
-                birthday_this_year = datetime(year=today.year, month=user_month, day=user_day)
+                birthday_this_year = safe_date(today.year, user_month, user_day)
                 days_until_birthday = (birthday_this_year - today).days
                 if days_until_birthday < 0:
-                    birthday_next_year = datetime(year=today.year + 1, month=user_month, day=user_day)
+                    birthday_next_year = safe_date(today.year + 1, user_month, user_day)
                     days_until_birthday = (birthday_next_year - today).days
 
                 if days_until_birthday < min_days and days_until_birthday < 364:
                     min_days = days_until_birthday
                     closest = {
                         'user_name': user_name,
+                        'user_tag': user_tag,
                         'user_day': user_day,
                         'user_month': user_month,
                         'user_wishlist': user_wishlist,
@@ -332,6 +335,92 @@ def delete_friend(user_id: int, friend_id: int) -> None:
         "UPDATE users SET friends = ? WHERE user_id = ?",
         (",".join(new_ids), user_id)
     )
+    con.commit()
+    cur.close()
+    con.close()
+
+
+def safe_date(year: int, month: int, day: int) -> datetime:
+    """Создаёт дату, безопасно обрабатывая 29 февраля."""
+    try:
+        return datetime(year=year, month=month, day=day)
+    except ValueError:
+        if month == 2 and day == 29:
+            return datetime(year=year, month=2, day=28)
+        raise
+
+
+# Функции для работы с предложениями вишлистов
+
+def add_wishlist_suggestion(sender_id: int, receiver_id: int, wishlist_text: str) -> int:
+    """Добавляет предложение вишлиста и возвращает ID предложения."""
+    con = sqlite3.connect(BIRTHDAY_DATABASE)
+    cur = con.cursor()
+
+    cur.execute("""
+        INSERT INTO wishlist_suggestions (sender_id, receiver_id, wishlist_text, status)
+        VALUES (?, ?, ?, 'pending')
+    """, (sender_id, receiver_id, wishlist_text))
+
+    con.commit()
+    suggestion_id = cur.lastrowid
+    cur.close()
+    con.close()
+
+    return suggestion_id
+
+
+def get_wishlist_suggestion(suggestion_id: int) -> dict | None:
+    """Получает информацию о предложении вишлиста по ID."""
+    con = sqlite3.connect(BIRTHDAY_DATABASE)
+    cur = con.cursor()
+
+    cur.execute("""
+        SELECT sender_id, receiver_id, wishlist_text, status
+        FROM wishlist_suggestions
+        WHERE id = ?
+    """, (suggestion_id,))
+
+    result = cur.fetchone()
+    cur.close()
+    con.close()
+
+    if result:
+        return {
+            "sender_id": result[0],
+            "receiver_id": result[1],
+            "wishlist_text": result[2],
+            "status": result[3]
+        }
+    return None
+
+
+def update_wishlist_suggestion_status(suggestion_id: int, status: str):
+    """Обновляет статус предложения вишлиста."""
+    con = sqlite3.connect(BIRTHDAY_DATABASE)
+    cur = con.cursor()
+
+    cur.execute("""
+        UPDATE wishlist_suggestions
+        SET status = ?
+        WHERE id = ?
+    """, (status, suggestion_id))
+
+    con.commit()
+    cur.close()
+    con.close()
+
+
+def delete_wishlist_suggestion(suggestion_id: int):
+    """Удаляет предложение вишлиста."""
+    con = sqlite3.connect(BIRTHDAY_DATABASE)
+    cur = con.cursor()
+
+    cur.execute("""
+        DELETE FROM wishlist_suggestions
+        WHERE id = ?
+    """, (suggestion_id,))
+
     con.commit()
     cur.close()
     con.close()

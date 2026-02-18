@@ -19,7 +19,8 @@ expected_columns = {
     "user_subgroup": "TEXT",
     "is_approved": "BOOLEAN",
     "created_at": "DATETIME DEFAULT CURRENT_TIMESTAMP",
-    "friends": "TEXT"
+    "friends": "TEXT",
+    "schedule_notifications": "BOOLEAN DEFAULT 0"
 }
 
 
@@ -47,7 +48,8 @@ def init_database():
                 user_subgroup TEXT,
                 is_approved BOOLEAN,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                friends TEXT
+                friends TEXT,
+                schedule_notifications BOOLEAN DEFAULT 0
             )
         """)
 
@@ -77,6 +79,39 @@ def init_database():
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS wishlist_suggestions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id INTEGER NOT NULL,
+            receiver_id INTEGER NOT NULL,
+            wishlist_text TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',  -- Статусы: 'pending', 'accepted', 'declined'
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS task_settings (
+            task_name TEXT PRIMARY KEY,
+            enabled BOOLEAN DEFAULT 1,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Инициализируем таски по умолчанию (все включены)
+    default_tasks = [
+        ('daily_schedule', 1),
+        ('birthday_notifications', 1),
+        ('new_year_greetings', 1),
+        ('schedule_notifications', 1)
+    ]
+    
+    for task_name, enabled in default_tasks:
+        cur.execute("""
+            INSERT OR IGNORE INTO task_settings (task_name, enabled)
+            VALUES (?, ?)
+        """, (task_name, enabled))
+
     con.commit()
     cur.close()
     con.close()
@@ -98,3 +133,8 @@ def ensure_columns(cursor, table_name, expected_columns: dict):
         if column_name not in existing_columns:
             cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}")
             write_user_log(f"Добавлен столбец '{column_name}' в таблицу '{table_name}'")
+            
+            # Если добавляется schedule_notifications, устанавливаем 0 для всех существующих пользователей
+            if column_name == "schedule_notifications":
+                cursor.execute(f"UPDATE {table_name} SET {column_name} = 0 WHERE {column_name} IS NULL")
+                write_user_log(f"Установлено значение по умолчанию (0) для столбца '{column_name}' у всех пользователей")
