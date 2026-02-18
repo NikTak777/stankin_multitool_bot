@@ -10,7 +10,7 @@ def get_friends_menu_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
-def get_edit_menu_keyboard(total_friends: int):
+def get_edit_menu_keyboard(total_friends: int, fid: int = 0):
     """Создаёт клавиатуру с кнопками управления"""
     builder = InlineKeyboardBuilder()
 
@@ -27,6 +27,11 @@ def get_edit_menu_keyboard(total_friends: int):
         InlineKeyboardButton(text="⬆️", callback_data="friends_prev"),
         InlineKeyboardButton(text="⬇️", callback_data="friends_next")
     )
+
+    builder.row(InlineKeyboardButton(
+        text="📅 Расписание",
+        callback_data=f"friend_schedule_{fid}"
+    ))
 
     builder.row(InlineKeyboardButton(
         text="📋 Профиль друга",
@@ -67,3 +72,13 @@ def get_accept_request_keyboard():
         [InlineKeyboardButton(text="👤 Список друзей", callback_data="friends_edit_menu")],
         [InlineKeyboardButton(text="⬅️ В главное меню", callback_data="start")]
     ])
+
+
+def get_wishlist_suggestion_keyboard(suggestion_id: int) -> InlineKeyboardMarkup:
+    """Клавиатура для принятия/отклонения предложения вишлиста."""
+    b = InlineKeyboardBuilder()
+    b.row(
+        InlineKeyboardButton(text="✅ Принять", callback_data=f"accept_wishlist_suggestion:{suggestion_id}"),
+        InlineKeyboardButton(text="❌ Отклонить", callback_data=f"decline_wishlist_suggestion:{suggestion_id}"),
+    )
+    return b.as_markup()
