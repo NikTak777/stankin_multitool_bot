@@ -12,6 +12,7 @@ from utils.database import check_users, get_user_info, check_users_in_7_days
 from utils.group_utils import load_groups
 from utils.user_utils import is_user_accessible
 from utils.database_utils.friends import get_list_friends
+from utils.database_utils.task_management import get_task_status
 
 from bot import bot
 
@@ -20,6 +21,17 @@ tz_moscow = pytz.timezone("Europe/Moscow")
 
 async def check_birthdays():
     while True:
+        # Проверяем, включен ли таск
+        if not get_task_status("birthday_notifications"):
+            # Если таск выключен, проверяем раз в день
+            now = datetime.now(tz=tz_moscow)
+            next_run = now.replace(hour=8, minute=0, second=0, microsecond=0)
+            if now >= next_run:
+                next_run += timedelta(days=1)
+            time_to_sleep = (next_run - now).total_seconds()
+            await asyncio.sleep(time_to_sleep)
+            continue
+        
         now = datetime.now(tz=tz_moscow)
 
         next_run = now.replace(hour=8, minute=0, second=0, microsecond=0)

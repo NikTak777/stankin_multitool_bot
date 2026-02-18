@@ -6,6 +6,7 @@ import pytz
 from utils.logger import write_user_log  # Функция логирования
 from utils.schedule_utils import load_groups, is_group_file_exists
 from services.schedule_service import format_schedule, load_schedule
+from utils.database_utils.task_management import get_task_status
 
 from bot import bot  # Импорт бота для отправки сообщений
 
@@ -39,6 +40,11 @@ async def send_daily_schedule():
 
     while True:
         try:
+            # Проверяем, включен ли таск
+            if not get_task_status("daily_schedule"):
+                await asyncio.sleep(3600)  # Спим час, если таск выключен
+                continue
+            
             now = _now_msk()
 
             if not _is_within_night_window(now.hour):
