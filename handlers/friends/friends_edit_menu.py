@@ -15,6 +15,8 @@ from utils.logger import write_user_log
 
 router = Router()
 
+FRIENDS_PER_PAGE = 10
+
 
 @router.callback_query(F.data == "friends_edit_menu")
 @sync_username
@@ -43,33 +45,58 @@ async def callback_friends_edit_menu(callback: CallbackQuery, state: FSMContext)
 @sync_username
 async def friends_nav(callback: CallbackQuery, state: FSMContext):
     """
-    Листаем список друзей (вперёд/назад).
+    Листаем выбранного друга в списке (вперёд/назад в пределах страницы или глобально).
     """
     user_id = callback.from_user.id
     friends = get_friends_info(user_id)
     total = len(friends)
 
     if total <= 1:
-        await callback.answer()  # Нечего листать
+        await callback.answer()
         return
 
-    # текущее состояние
     data = await state.get_data()
     idx = int(data.get("current_index", 0))
-
-    # определяем направление
     idx = (idx - 1) % total if callback.data == "friends_prev" else (idx + 1) % total
-
-    # сохраняем новый индекс и обновляем экран
     await state.update_data(current_index=idx)
+    await update_friends_view(callback, state)
+    await callback.answer()
+
+
+@router.callback_query(EditMenuState.editing, F.data.in_(["friends_page_prev", "friends_page_next"]))
+@sync_username
+async def friends_page_nav(callback: CallbackQuery, state: FSMContext):
+    """
+    Переключение страниц списка друзей (по 10 на страницу).
+    """
+    user_id = callback.from_user.id
+    friends = get_friends_info(user_id)
+    total = len(friends)
+    total_pages = (total + FRIENDS_PER_PAGE - 1) // FRIENDS_PER_PAGE if total else 0
+
+    if total_pages <= 1:
+        await callback.answer()
+        return
+
+    data = await state.get_data()
+    idx = int(data.get("current_index", 0))
+    current_page = idx // FRIENDS_PER_PAGE
+
+    if callback.data == "friends_page_prev":
+        new_page = (current_page - 1) if current_page > 0 else (total_pages - 1)  # с первой влево → последняя
+    else:
+        new_page = (current_page + 1) if current_page < total_pages - 1 else 0  # с последней вправо → первая
+
+    new_idx = new_page * FRIENDS_PER_PAGE
+    await state.update_data(current_index=new_idx)
     await update_friends_view(callback, state)
     await callback.answer()
 
 
 async def update_friends_view(callback: CallbackQuery, state: FSMContext, prefix: str = ""):
     """
-    Рендерит список друзей, подсвечивая текущего индикатором
-    и показывает базовый заголовок.
+    Рендерит список друзей по страницам (до FRIENDS_PER_PAGE на страницу),
+    подсвечивает текущего выбранного друга.
     """
     data = await state.get_data()
     idx = int(data.get("current_index", 0))
@@ -84,24 +111,36 @@ async def update_friends_view(callback: CallbackQuery, state: FSMContext, prefix
         await callback.message.edit_text(message_text, reply_markup=get_edit_menu_keyboard(total))
         return
 
-    # нормализуем индекс
     if idx >= total:
         idx = 0
         await state.update_data(current_index=idx)
 
-    selected_fid, selected_name = pairs[idx]
+    total_pages = (total + FRIENDS_PER_PAGE - 1) // FRIENDS_PER_PAGE
+    current_page = idx // FRIENDS_PER_PAGE
+    start = current_page * FRIENDS_PER_PAGE
+    end = min(start + FRIENDS_PER_PAGE, total)
+    pairs_page = pairs[start:end]
 
-    # подсветка текущего
     lines = []
-    for i, (fid, name) in enumerate(pairs):
-        prefix_icon = "👉" if i == idx else "👤"
+    for i, (fid, name) in enumerate(pairs_page):
+        global_i = start + i
+        prefix_icon = "👉" if global_i == idx else "👤"
         lines.append(f"{prefix_icon} {name}")
 
-    text = (
-        f"{prefix}"
-        f"Привет, {user_name}!\n\n"
-        f"Твои друзья ({idx+1}/{total}):\n" +
-        "\n".join(lines)
-    )
+    page_info = f"Страница {current_page + 1} из {total_pages}" if total_pages > 1 else ""
+    range_info = f"Друзья {start + 1}-{end} из {total}"
+    header = f"Твои друзья ({range_info})"
+    if page_info:
+        header += f"\n{page_info}"
 
-    await callback.message.edit_text(text, reply_markup=get_edit_menu_keyboard(total, selected_fid))
+    text = f"{prefix}Привет, {user_name}!\n\n{header}:\n" + "\n".join(lines)
+
+    selected_fid = pairs[idx][0]
+    await callback.message.edit_text(
+        text,
+        reply_markup=get_edit_menu_keyboard(
+            total, selected_fid,
+            total_pages=total_pages,
+            current_page=current_page
+        )
+    )
