@@ -219,3 +219,12 @@ database/
 
 # PyCharm
 .idea/
+
+# Docker
+docker-compose.override.yml
+
+# PostgreSQL backups
+*.sql
+*.sql.gz
+backup_*.sql
+backup_*.sql.gz
