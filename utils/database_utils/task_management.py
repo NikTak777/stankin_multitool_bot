@@ -67,4 +67,3 @@ def get_all_tasks_status() -> dict[str, bool]:
     con.close()
     
     return {task_name: bool(enabled) for task_name, enabled in results}
-

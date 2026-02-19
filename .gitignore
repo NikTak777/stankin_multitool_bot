@@ -205,3 +205,17 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Документация (временно не коммитим)
+*.md
+
+# База данных
+database/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# PyCharm
+.idea/

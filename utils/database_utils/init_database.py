@@ -1,4 +1,5 @@
 import sqlite3
+import os
 
 from config import BIRTHDAY_DATABASE
 
@@ -29,6 +30,13 @@ def init_database():
     Инициализирует базу данных бота, проверяет существуют ли таблицы.
     Если нет, то создаёт их. Запускается при запуске бота.
     """
+
+    # Создаем директорию для базы данных, если её нет
+    db_dir = os.path.dirname(BIRTHDAY_DATABASE)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+        write_user_log(f"Создана директория для базы данных: {db_dir}")
+
     con = sqlite3.connect(BIRTHDAY_DATABASE)
     cur = con.cursor()
 
