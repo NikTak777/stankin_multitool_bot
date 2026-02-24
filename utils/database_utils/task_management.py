@@ -10,13 +10,13 @@ def get_task_status(task_name: str) -> bool:
     try:
         with get_db_connection() as con:
             cur = con.cursor()
-            
+
             cur.execute("""
-                SELECT enabled FROM task_settings WHERE task_name = %s
+                        SELECT enabled FROM task_settings WHERE task_name = %s
             """, (task_name,))
-            
+
             result = cur.fetchone()
-            
+
             # По умолчанию таск включен, если записи нет
             return bool(result[0]) if result else True
     except Exception as e:
@@ -29,15 +29,15 @@ def set_task_status(task_name: str, enabled: bool) -> bool:
     try:
         with get_db_connection() as con:
             cur = con.cursor()
-            
+
             cur.execute("""
                 INSERT INTO task_settings (task_name, enabled, updated_at)
-                VALUES (%s, %s, %s)
+                    VALUES (%s, %s, %s)
                 ON CONFLICT(task_name) DO UPDATE SET
-                    enabled = %s,
-                    updated_at = %s
+                        enabled = %s,
+                        updated_at = %s
             """, (task_name, enabled, datetime.now(), enabled, datetime.now()))
-            
+
             status_text = "включен" if enabled else "выключен"
             write_user_log(f"Таск '{task_name}' {status_text}")
             return True
@@ -58,10 +58,10 @@ def get_all_tasks_status() -> dict[str, bool]:
     try:
         with get_db_connection() as con:
             cur = con.cursor()
-            
+
             cur.execute("SELECT task_name, enabled FROM task_settings")
             results = cur.fetchall()
-            
+
             return {task_name: bool(enabled) for task_name, enabled in results}
     except Exception as e:
         write_user_log(f"Ошибка при получении статусов тасков: {e}")

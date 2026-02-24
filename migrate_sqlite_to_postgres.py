@@ -157,6 +157,37 @@ def migrate_data():
             
             write_user_log(f"Мигрировано настроек задач: {task_count} из {len(tasks)}")
             
+            # Обновляем sequences после миграции
+            write_user_log("Обновляю sequences...")
+            
+            # Обновляем sequence для user_activity
+            pg_cur.execute("SELECT MAX(id) FROM user_activity")
+            max_id = pg_cur.fetchone()[0]
+            if max_id:
+                pg_cur.execute("SELECT setval('user_activity_id_seq', %s)", (max_id,))
+                write_user_log(f"Обновлен user_activity_id_seq до {max_id}")
+            else:
+                pg_cur.execute("SELECT setval('user_activity_id_seq', 1, false)")
+                write_user_log("Обновлен user_activity_id_seq до 1 (таблица пуста)")
+            
+            # Обновляем sequence для friend_requests
+            pg_cur.execute("SELECT MAX(id) FROM friend_requests")
+            max_id = pg_cur.fetchone()[0]
+            if max_id:
+                pg_cur.execute("SELECT setval('friend_requests_id_seq', %s)", (max_id,))
+                write_user_log(f"Обновлен friend_requests_id_seq до {max_id}")
+            else:
+                pg_cur.execute("SELECT setval('friend_requests_id_seq', 1, false)")
+            
+            # Обновляем sequence для wishlist_suggestions
+            pg_cur.execute("SELECT MAX(id) FROM wishlist_suggestions")
+            max_id = pg_cur.fetchone()[0]
+            if max_id:
+                pg_cur.execute("SELECT setval('wishlist_suggestions_id_seq', %s)", (max_id,))
+                write_user_log(f"Обновлен wishlist_suggestions_id_seq до {max_id}")
+            else:
+                pg_cur.execute("SELECT setval('wishlist_suggestions_id_seq', 1, false)")
+            
             write_user_log("Миграция данных завершена успешно!")
             return True
             
