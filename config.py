@@ -7,10 +7,17 @@ class Settings(BaseSettings):
     """Настройки бота, загружаемые из переменных окружения"""
 
     TOKEN: str = Field(..., description="Telegram Bot Token")
-
-    BIRTHDAY_DATABASE: str = Field(default="database/birthdate_list.db", description="Path to birthday database")
-
     ADMIN_ID: int = Field(..., description="Telegram Admin User ID")
+    
+    # PostgreSQL настройки
+    DB_HOST: str = Field(default="localhost", description="PostgreSQL host")
+    DB_PORT: int = Field(default=5432, description="PostgreSQL port")
+    DB_NAME: str = Field(default="users", description="Database name")
+    DB_USER: str = Field(default="postgres", description="Database user")
+    DB_PASSWORD: str = Field(..., description="Database password")
+    
+    # Для обратной совместимости при миграции (можно удалить позже)
+    BIRTHDAY_DATABASE: str = Field(default="database/birthdate_list.db", description="Legacy SQLite path (for migration)")
     
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -30,9 +37,22 @@ except Exception as e:
         "Убедитесь, что файл .env существует и содержит все необходимые переменные:\n"
         "TOKEN=your_bot_token\n"
         "ADMIN_ID=your_admin_id\n"
-        "BIRTHDAY_DATABASE=database/birthdate_list.db"
+        "DB_HOST=localhost\n"
+        "DB_PORT=5432\n"
+        "DB_NAME=users\n"
+        "DB_USER=postgres\n"
+        "DB_PASSWORD=your_password"
     ) from e
 
 TOKEN = settings.TOKEN
-BIRTHDAY_DATABASE = settings.BIRTHDAY_DATABASE
 ADMIN_ID = settings.ADMIN_ID
+
+# PostgreSQL настройки
+DB_HOST = settings.DB_HOST
+DB_PORT = settings.DB_PORT
+DB_NAME = settings.DB_NAME
+DB_USER = settings.DB_USER
+DB_PASSWORD = settings.DB_PASSWORD
+
+# Для обратной совместимости
+BIRTHDAY_DATABASE = settings.BIRTHDAY_DATABASE
