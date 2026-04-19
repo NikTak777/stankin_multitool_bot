@@ -1,6 +1,6 @@
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import pytz
 
 tz_moscow = pytz.timezone("Europe/Moscow")
@@ -14,10 +14,15 @@ def get_week_days_keyboard(start_date: datetime | None = None,
     day_names = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 
     today = datetime.now(tz=tz_moscow)
+    # Календарный день, относительно которого считаются offset в callback
+    anchor_day = today.date() 
 
     # Если start_date не задана, начинаем с текущей даты
     if start_date is None:
         start_date = today
+
+    week_token = start_date.strftime("%Y-%m-%d")
+    anchor_token = anchor_day.strftime("%Y-%m-%d")
 
     day_date = start_date
     count = 0
@@ -29,12 +34,11 @@ def get_week_days_keyboard(start_date: datetime | None = None,
             continue
 
         text_on_button = f"{day_names[day_date.weekday()]} ({day_date.day:02}.{day_date.month:02})"
-        offset = (day_date.date() - today.date()).days
-
+        offset = (day_date.date() - anchor_day).days
         if friend_id:
-            cb = f"schedule_offset_{offset}_{start_date.strftime('%Y-%m-%d')}_f{friend_id}"
+            cb = f"schedule_offset_{offset}_{week_token}_{anchor_token}_f{friend_id}"
         else:
-            cb = f"schedule_offset_{offset}_{start_date.strftime('%Y-%m-%d')}"
+            cb = f"schedule_offset_{offset}_{week_token}_{anchor_token}"
 
         builder.button(text=text_on_button, callback_data=cb)
         day_date += timedelta(days=1)
@@ -45,11 +49,11 @@ def get_week_days_keyboard(start_date: datetime | None = None,
     next_week = start_date + timedelta(weeks=1)
 
     if friend_id:
-        prev_cb = f"schedule_week_{prev_week.strftime('%Y-%m-%d')}_f{friend_id}"
-        next_cb = f"schedule_week_{next_week.strftime('%Y-%m-%d')}_f{friend_id}"
+        prev_cb = f"schedule_week_{prev_week.strftime('%Y-%m-%d')}_{anchor_token}_f{friend_id}"
+        next_cb = f"schedule_week_{next_week.strftime('%Y-%m-%d')}_{anchor_token}_f{friend_id}"
     else:
-        prev_cb = f"schedule_week_{prev_week.strftime('%Y-%m-%d')}"
-        next_cb = f"schedule_week_{next_week.strftime('%Y-%m-%d')}"
+        prev_cb = f"schedule_week_{prev_week.strftime('%Y-%m-%d')}_{anchor_token}"
+        next_cb = f"schedule_week_{next_week.strftime('%Y-%m-%d')}_{anchor_token}"
 
     builder.button(text="◀️ Назад", callback_data=prev_cb)
     builder.button(text="▶️ Вперёд", callback_data=next_cb)

@@ -3,7 +3,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pytz
 
@@ -58,27 +58,94 @@ async def show_today_schedule(callback: types.CallbackQuery, state: FSMContext, 
     await callback.answer()
 
 
+def _parse_schedule_offset_callback(data: str) -> tuple[int, datetime, datetime | None, int | None]:
+    """
+    Разбор callback дня недели.
+    Новый формат: schedule_offset_{offset}_{week}_{anchor}_f{id}
+    Старый: schedule_offset_{offset}_{week} или schedule_offset_{offset}_{week}_f{id}
+    """
+    parts = data.split("_")
+    offset = int(parts[2])
+    week_start = datetime.strptime(parts[3], "%Y-%m-%d").replace(tzinfo=tz_moscow)
+
+    friend_id = None
+    anchor_day: date | None = None
+
+    if len(parts) >= 6 and parts[5].startswith("f"):
+        anchor_day = datetime.strptime(parts[4], "%Y-%m-%d").date()
+        friend_id = int(parts[5][1:])
+    elif len(parts) >= 5:
+        if parts[4].startswith("f"):
+            friend_id = int(parts[4][1:])
+        else:
+            anchor_day = datetime.strptime(parts[4], "%Y-%m-%d").date()
+
+    anchor_dt = (
+        datetime.combine(anchor_day, datetime.min.time()).replace(tzinfo=tz_moscow)
+        if anchor_day is not None
+        else None
+    )
+    return offset, week_start, anchor_dt, friend_id
+
+
+def _parse_schedule_week_callback(data: str) -> tuple[datetime, datetime | None, int | None]:
+    """
+    Разбор callback листания недели.
+    Новый формат: schedule_week_{week}_{anchor} или schedule_week_{week}_{anchor}_f{id}
+    Старый: schedule_week_{week} или schedule_week_{week}_f{id}
+    """
+    parts = data.split("_")
+    if len(parts) < 3:
+        raise ValueError(f"Bad schedule_week callback: {data}")
+
+    week_start = datetime.strptime(parts[2], "%Y-%m-%d").replace(tzinfo=tz_moscow)
+
+    anchor_dt = None
+    friend_id = None
+
+    if len(parts) == 3:
+        return week_start, anchor_dt, friend_id
+
+    if len(parts) == 4:
+        if parts[3].startswith("f"):
+            friend_id = int(parts[3][1:])
+        else:
+            ad = datetime.strptime(parts[3], "%Y-%m-%d").date()
+            anchor_dt = datetime.combine(ad, datetime.min.time()).replace(tzinfo=tz_moscow)
+        return week_start, anchor_dt, friend_id
+
+    # len >= 5
+    ad = datetime.strptime(parts[3], "%Y-%m-%d").date()
+    anchor_dt = datetime.combine(ad, datetime.min.time()).replace(tzinfo=tz_moscow)
+    if parts[4].startswith("f"):
+        friend_id = int(parts[4][1:])
+    return week_start, anchor_dt, friend_id
+
+
+def _skip_sunday(dt: datetime) -> datetime:
+    while dt.weekday() == 6:
+        dt += timedelta(days=1)
+    return dt
+
+
 # --- Кнопка выбора дня ---
 @router.callback_query(F.data.startswith("schedule_offset_"))
 async def handle_day_offset(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
-    parts = callback.data.split("_")
-    offset = int(parts[2])
+    offset, week_start, anchor_dt, friend_id = _parse_schedule_offset_callback(callback.data)
 
-    # Безопасно обрабатываем дату (если есть)
-    if len(parts) > 3:
-        start_date = datetime.strptime(parts[3], "%Y-%m-%d").replace(tzinfo=tz_moscow)
+    today = datetime.now(tz_moscow)
+    is_stale = anchor_dt is not None and anchor_dt.date() != today.date()
+
+    if is_stale:
+        target_date = _skip_sunday(today)
+        keyboard_start = today
     else:
-        start_date = datetime.now(tz=tz_moscow)
-
-    friend_id = None
-    if len(parts) > 4 and parts[4].startswith("f"):
-        friend_id = int(parts[4][1:])
-
-    today = datetime.now(tz=tz_moscow)
-    target_date = today + timedelta(days=offset)
-
-    while target_date.weekday() == 6:
-        target_date += timedelta(days=1)
+        if anchor_dt is not None:
+            target_date = anchor_dt + timedelta(days=offset)
+        else:
+            target_date = today + timedelta(days=offset)
+        target_date = _skip_sunday(target_date)
+        keyboard_start = week_start
 
     user_has_group = await check_group_user(callback.from_user, state, bot, callback=callback)
     if not user_has_group:
@@ -94,7 +161,7 @@ async def handle_day_offset(callback: types.CallbackQuery, state: FSMContext, bo
         await callback.message.edit_text(
             text=schedule_message,
             reply_markup=get_week_days_keyboard(
-                start_date=start_date,
+                start_date=keyboard_start,
                 friend_id=friend_id
             ),
             parse_mode="HTML"
@@ -214,27 +281,26 @@ async def handle_custom_schedule_date(callback: types.CallbackQuery, state: FSMC
 @router.callback_query(F.data.startswith("schedule_week_"))
 async def handle_week_switch(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
     """Перелистывание недель в основном расписании."""
-    data = callback.data.split("_")
+    week_target, anchor_dt, friend_id = _parse_schedule_week_callback(callback.data)
 
-    # пример callback_data: schedule_week_2025-10-13_f1771028388
-    if len(data) == 4 and data[3].startswith("f"):
-        date_str = data[2]  # 2025-10-13
-        friend_id = int(data[3][1:])  # 1771028388
+    today = datetime.now(tz_moscow)
+    is_stale = anchor_dt is not None and anchor_dt.date() != today.date()
+
+    # Устаревшее сообщение: первым нажатием синхронизируем текст и клавиатуру на сегодня;
+    # следующие нажатия листают недели как обычно.
+    if is_stale:
+        target_date = _skip_sunday(today)
     else:
-        date_str = data[2]
-        friend_id = None
-
-    start_date = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=tz_moscow)
+        target_date = week_target
 
     user_has_group = await check_group_user(callback.from_user, state, bot, callback=callback)
     if not user_has_group:
         return
 
-    # Показываем расписание на первый день новой недели (понедельник)
     await show_schedule_for_date(
         user_id=callback.from_user.id,
         user_fullname=callback.from_user.full_name,
-        target_date=start_date,
+        target_date=target_date,
         callback=callback,
         friend_id=friend_id
     )
