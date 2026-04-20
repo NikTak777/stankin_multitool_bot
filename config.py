@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     
     # Для обратной совместимости при миграции (можно удалить позже)
     BIRTHDAY_DATABASE: str = Field(default="database/birthdate_list.db", description="Legacy SQLite path (for migration)")
+
+    SCHEDULE_API_BASE_URL: str = Field(
+        default="http://127.0.0.1:8000/v1",
+        description="Базовый URL multitool_api (без завершающего слэша), например https://example.com/v1",
+    )
     
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -56,3 +61,5 @@ DB_PASSWORD = settings.DB_PASSWORD
 
 # Для обратной совместимости
 BIRTHDAY_DATABASE = settings.BIRTHDAY_DATABASE
+
+SCHEDULE_API_BASE_URL = settings.SCHEDULE_API_BASE_URL.rstrip("/")

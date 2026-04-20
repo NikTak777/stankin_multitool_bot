@@ -1,5 +1,6 @@
 import pytz
 from datetime import datetime, timedelta
+from typing import Optional
 
 from utils.db_connection import get_db_connection
 
@@ -142,7 +143,8 @@ def get_user_info(user_id):
 
         cur.execute(
             "SELECT user_tag, user_name, real_user_name, cust_user_name,"
-            "user_day, user_month, user_year, user_wishlist, user_group, user_subgroup, is_approved, schedule_notifications FROM users WHERE user_id = %s",
+            "user_day, user_month, user_year, user_wishlist, user_group, user_subgroup, is_approved, schedule_notifications,"
+            "last_professor_fio FROM users WHERE user_id = %s",
             (user_id,)
         )
         result = cur.fetchone()
@@ -160,7 +162,8 @@ def get_user_info(user_id):
                 "user_group": result[8],
                 "user_subgroup": result[9],
                 "is_approved": result[10],
-                "schedule_notifications": result[11] if result[11] is not None else False
+                "schedule_notifications": result[11] if result[11] is not None else False,
+                "last_professor_fio": result[12],
             }
         return None
 
@@ -191,6 +194,18 @@ def get_user_wishlist(user_tag):
             return user_name, "no_wishlist"
 
         return user_name, wishlist
+
+
+def update_last_professor_fio(user_id: int, fio: Optional[str]) -> None:
+    """Сохраняет ФИО последнего просмотренного преподавателя или сбрасывает (None)."""
+    if not check_user_exists(user_id):
+        return
+    with get_db_connection() as con:
+        cur = con.cursor()
+        cur.execute(
+            "UPDATE users SET last_professor_fio = %s WHERE user_id = %s",
+            (fio, user_id),
+        )
 
 
 def set_user_group_subgroup(user_id, user_group, user_subgroup):

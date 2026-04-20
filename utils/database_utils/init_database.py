@@ -31,7 +31,8 @@ def init_database():
                     is_approved BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     friends TEXT,
-                    schedule_notifications BOOLEAN DEFAULT FALSE
+                    schedule_notifications BOOLEAN DEFAULT FALSE,
+                    last_professor_fio TEXT
                 )
             """)
             
@@ -150,7 +151,8 @@ def ensure_columns(cursor, table_name: str):
         "is_approved": "BOOLEAN DEFAULT FALSE",
         "created_at": "TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
         "friends": "TEXT",
-        "schedule_notifications": "BOOLEAN DEFAULT FALSE"
+        "schedule_notifications": "BOOLEAN DEFAULT FALSE",
+        "last_professor_fio": "TEXT",
     }
     
     # Добавляем недостающие столбцы

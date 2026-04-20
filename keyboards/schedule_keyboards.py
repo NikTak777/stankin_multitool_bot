@@ -71,6 +71,58 @@ def get_week_days_keyboard(start_date: datetime | None = None,
     return builder.as_markup()
 
 
+def get_professor_week_days_keyboard(start_date: datetime | None = None) -> InlineKeyboardMarkup:
+    """
+    Недельная клавиатура для расписания преподавателя (аналог get_week_days_keyboard).
+    Колбеки с префиксом prof_schedule_, чтобы не пересекаться с расписанием группы.
+    «Чужая группа» заменена на «Другой преподаватель».
+    """
+    builder = InlineKeyboardBuilder()
+    day_names = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+
+    today = datetime.now(tz=tz_moscow)
+    anchor_day = today.date()
+
+    if start_date is None:
+        start_date = today
+
+    week_token = start_date.strftime("%Y-%m-%d")
+    anchor_token = anchor_day.strftime("%Y-%m-%d")
+
+    day_date = start_date
+    count = 0
+
+    while count < 6:
+        if day_date.weekday() == 6:
+            day_date += timedelta(days=1)
+            continue
+
+        text_on_button = f"{day_names[day_date.weekday()]} ({day_date.day:02}.{day_date.month:02})"
+        offset = (day_date.date() - anchor_day).days
+        cb = f"prof_schedule_offset_{offset}_{week_token}_{anchor_token}"
+
+        builder.button(text=text_on_button, callback_data=cb)
+        day_date += timedelta(days=1)
+        count += 1
+
+    prev_week = start_date - timedelta(weeks=1)
+    next_week = start_date + timedelta(weeks=1)
+
+    prev_cb = f"prof_schedule_week_{prev_week.strftime('%Y-%m-%d')}_{anchor_token}"
+    next_cb = f"prof_schedule_week_{next_week.strftime('%Y-%m-%d')}_{anchor_token}"
+
+    builder.button(text="◀️ Назад", callback_data=prev_cb)
+    builder.button(text="▶️ Вперёд", callback_data=next_cb)
+
+    builder.button(text="🔀 Другой день", callback_data="prof_schedule_custom")
+    builder.button(text="👨‍🏫 Другой преподаватель", callback_data="professor_schedule")
+
+    builder.button(text="⬅️ Назад в меню", callback_data="start")
+
+    builder.adjust(3, 3, 2, 2, 1)
+    return builder.as_markup()
+
+
 def get_custom_schedule_keyboard(target_date: datetime) -> InlineKeyboardMarkup:
     """
     Возвращает inline-клавиатуру для кастомного расписания с:

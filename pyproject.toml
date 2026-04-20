@@ -13,6 +13,7 @@ pydantic-settings = "^2.5.0"
 pytz = "^2024.2"
 aiofiles = "^23.2.1"
 psycopg2-binary = "^2.9.9"
+aiohttp = "^3.9.0"
 
 [tool.poetry.group.dev.dependencies]
 
