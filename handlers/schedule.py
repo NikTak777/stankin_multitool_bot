@@ -134,7 +134,8 @@ async def handle_day_offset(callback: types.CallbackQuery, state: FSMContext, bo
     offset, week_start, anchor_dt, friend_id = _parse_schedule_offset_callback(callback.data)
 
     today = datetime.now(tz_moscow)
-    is_stale = anchor_dt is not None and anchor_dt.date() != today.date()
+
+    is_stale = anchor_dt is None or anchor_dt.date() != today.date()
 
     if is_stale:
         target_date = _skip_sunday(today)
@@ -284,7 +285,8 @@ async def handle_week_switch(callback: types.CallbackQuery, state: FSMContext, b
     week_target, anchor_dt, friend_id = _parse_schedule_week_callback(callback.data)
 
     today = datetime.now(tz_moscow)
-    is_stale = anchor_dt is not None and anchor_dt.date() != today.date()
+
+    is_stale = anchor_dt is None or anchor_dt.date() != today.date()
 
     # Устаревшее сообщение: первым нажатием синхронизируем текст и клавиатуру на сегодня;
     # следующие нажатия листают недели как обычно.

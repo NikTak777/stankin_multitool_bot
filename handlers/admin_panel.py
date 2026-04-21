@@ -7,9 +7,8 @@ from utils.database_utils.task_management import toggle_task, get_task_status
 from utils.logger import write_user_log
 
 from keyboards.back_to_menu import get_back_inline_keyboard
-from keyboards.admin_tasks_keyboard import get_admin_tasks_keyboard
+from keyboards.admin_panel import get_admin_panel_keyboard, get_admin_tasks_keyboard
 
-# Декораторы
 from decorators.private_only import private_only
 from decorators.sync_username import sync_username
 from decorators.ensure_user_in_db import ensure_user_in_db
@@ -29,8 +28,8 @@ async def cmd_admin_panel(message: types.Message):
         user_id=message.from_user.id,
         chat_id=message.chat.id,
         full_name=message.from_user.full_name,
-        message=message,  # передаём message
-        callback=None  # не из callback
+        message=message,
+        callback=None
     )
 
 
@@ -42,8 +41,8 @@ async def handle_admin_panel_callback(callback: types.CallbackQuery):
         user_id=callback.from_user.id,
         chat_id=callback.message.chat.id,
         full_name=callback.from_user.full_name,
-        message=callback.message,  # передаём callback.message
-        callback=callback  # сигнал, что вызвано из callback
+        message=callback.message,
+        callback=callback
     )
     await callback.answer()
 
@@ -58,7 +57,7 @@ async def send_admin_panel(
 ):
     full_name = get_real_user_name(user_id)
 
-    # Получаем топ-5 последних пользователей
+    # Получаем топ-10 последних пользователей
     last_users = get_last_active_users(10)
     last_users_text = "\n".join([
         f"{i+1}. {u['user_name']} @{u['user_tag']}"
@@ -79,19 +78,6 @@ async def send_admin_panel(
         for i, u in enumerate(top_days_users)
     ])
     
-    # Создаем клавиатуру с кнопками управления
-    from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton
-    
-    builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(
-        text="⚙️ Управление тасками",
-        callback_data="admin_tasks"
-    ))
-    builder.row(InlineKeyboardButton(
-        text="⬅️ Назад в меню",
-        callback_data="start"
-    ))
-    
     text = (
         f"Привет, {full_name}!\n"
         "Это панель управления ботом.\n\n"
@@ -104,9 +90,9 @@ async def send_admin_panel(
     )
 
     if callback:
-        await message.edit_text(text=text, reply_markup=builder.as_markup())
+        await message.edit_text(text=text, reply_markup=get_admin_panel_keyboard())
     else:
-        await bot.send_message(chat_id=chat_id, text=text, reply_markup=builder.as_markup())
+        await bot.send_message(chat_id=chat_id, text=text, reply_markup=get_admin_panel_keyboard())
 
 
 async def _update_admin_tasks_menu(message: types.Message):
@@ -129,7 +115,7 @@ async def _update_admin_tasks_menu(message: types.Message):
         status_lines.append(f"{status_icon} {task_display_name}: {'Вкл.' if status else 'Выкл.'}")
     
     text = (
-        f"⚙️ Управление тасками\n\n"
+        f"⚙️ Меню управления тасками\n\n"
         "Выберите таск для переключения:\n\n" +
         "\n".join(status_lines)
     )
@@ -162,7 +148,6 @@ async def handle_toggle_task(callback: types.CallbackQuery):
     
     task_display_name = task_names.get(task_key, task_key)
     
-    # Переключаем таск
     new_status = toggle_task(task_key)
     
     status_text = "включен" if new_status else "выключен"
@@ -173,5 +158,4 @@ async def handle_toggle_task(callback: types.CallbackQuery):
         f"{'включил' if new_status else 'выключил'} таск '{task_display_name}'"
     )
     
-    # Обновляем меню
     await _update_admin_tasks_menu(callback.message)
