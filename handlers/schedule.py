@@ -8,7 +8,9 @@ from datetime import date, datetime, timedelta
 import pytz
 
 from services.schedule_service import get_schedule_for_date
-from keyboards.schedule_keyboards import get_custom_schedule_keyboard, get_week_days_keyboard
+from keyboards.schedule_keyboards import (
+    get_week_days_keyboard,
+)
 from keyboards.back_to_menu import get_back_inline_keyboard
 from states.schedule import ScheduleState
 from utils.logger import write_user_log
@@ -53,7 +55,7 @@ async def show_today_schedule(callback: types.CallbackQuery, state: FSMContext, 
     if not user_has_group:
         return
 
-    today = datetime.now(tz=tz_moscow)
+    today = datetime.now(tz=tz_moscow) # - timedelta(days=4)  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     await show_schedule_for_date(callback.from_user.id, callback.from_user.full_name, today, callback=callback)
     await callback.answer()
 
@@ -122,6 +124,17 @@ def _parse_schedule_week_callback(data: str) -> tuple[datetime, datetime | None,
     return week_start, anchor_dt, friend_id
 
 
+def _custom_keyboard_start_for_target(target_date: datetime) -> datetime:
+    """
+    Для кастомной даты: старт клавиатуры = тот же день недели, что и "сегодня",
+    но в неделе, ближайшей к выбранной дате.
+    Пример: сегодня вторник, выбрана 29.04 (среда) -> старт 28.04 (вторник).
+    """
+    today_weekday = datetime.now(tz=tz_moscow).weekday()
+    shift_back = (target_date.weekday() - today_weekday) % 7
+    return target_date - timedelta(days=shift_back)
+
+
 def _skip_sunday(dt: datetime) -> datetime:
     while dt.weekday() == 6:
         dt += timedelta(days=1)
@@ -133,7 +146,7 @@ def _skip_sunday(dt: datetime) -> datetime:
 async def handle_day_offset(callback: types.CallbackQuery, state: FSMContext, bot: Bot):
     offset, week_start, anchor_dt, friend_id = _parse_schedule_offset_callback(callback.data)
 
-    today = datetime.now(tz_moscow)
+    today = datetime.now(tz_moscow) # - timedelta(days=4)  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     is_stale = anchor_dt is None or anchor_dt.date() != today.date()
 
@@ -163,7 +176,8 @@ async def handle_day_offset(callback: types.CallbackQuery, state: FSMContext, bo
             text=schedule_message,
             reply_markup=get_week_days_keyboard(
                 start_date=keyboard_start,
-                friend_id=friend_id
+                    friend_id=friend_id,
+                    selected_date=target_date,
             ),
             parse_mode="HTML"
         )
@@ -344,7 +358,11 @@ async def show_schedule_for_date(
         return
 
     # Определяем начало недели для корректного построения клавиатуры
-    inline_kb = get_week_days_keyboard(start_date=target_date, friend_id=friend_id)
+    inline_kb = get_week_days_keyboard(
+        start_date=target_date,
+        friend_id=friend_id,
+        selected_date=target_date,
+    )
 
     try:
         if callback:
@@ -393,8 +411,8 @@ async def show_custom_schedule_for_date(
             await message.answer(text, reply_markup=get_back_inline_keyboard("start"))
         return
 
-    # Клавиатура
-    kb = get_custom_schedule_keyboard(target_date)
+    kb_start = _custom_keyboard_start_for_target(target_date)
+    kb = get_week_days_keyboard(start_date=kb_start, selected_date=target_date)
 
     try:
         if callback:

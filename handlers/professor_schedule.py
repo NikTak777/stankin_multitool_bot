@@ -64,6 +64,16 @@ def _skip_sunday(dt: datetime) -> datetime:
     return dt
 
 
+def _professor_keyboard_start_for_target(target_date: datetime) -> datetime:
+    """
+    Старт клавиатуры для кастомной даты:
+    тот же день недели, что и "сегодня", но в неделе выбранной даты.
+    """
+    today_weekday = datetime.now(tz=tz_moscow).weekday()
+    shift_back = (target_date.weekday() - today_weekday) % 7
+    return target_date - timedelta(days=shift_back)
+
+
 def _parse_prof_schedule_offset_callback(data: str) -> tuple[int, datetime, datetime]:
     """prof_schedule_offset_{offset}_{week}_{anchor}"""
     prefix = "prof_schedule_offset_"
@@ -107,7 +117,10 @@ async def _show_professor_schedule_for_date(
         professor_slug, target_date.day, target_date.month
     )
 
-    markup = get_professor_week_days_keyboard(start_date=keyboard_start)
+    markup = get_professor_week_days_keyboard(
+        start_date=keyboard_start,
+        selected_date=target_date,
+    )
 
     if error_key == "not_found":
         text = _ERR_MESSAGES["not_found"]
@@ -198,7 +211,10 @@ async def professor_schedule_open_from_menu(
         await callback.message.edit_text(
             body,
             parse_mode="HTML",
-            reply_markup=get_professor_week_days_keyboard(start_date=today),
+            reply_markup=get_professor_week_days_keyboard(
+                start_date=today,
+                selected_date=today,
+            ),
         )
         await callback.answer()
         write_user_log(
@@ -278,7 +294,10 @@ async def professor_schedule_receive_name(message: types.Message, state: FSMCont
     await message.answer(
         body,
         parse_mode="HTML",
-        reply_markup=get_professor_week_days_keyboard(start_date=today),
+        reply_markup=get_professor_week_days_keyboard(
+            start_date=today,
+            selected_date=today,
+        ),
     )
     write_user_log(
         f"Пользователь {message.from_user.full_name} ({message.from_user.id}) "
@@ -467,7 +486,7 @@ async def professor_show_custom_date(message: types.Message, state: FSMContext):
         professor_slug=slug,
         professor_display=display,
         target_date=target_date,
-        keyboard_start=target_date,
+        keyboard_start=_professor_keyboard_start_for_target(target_date),
         message=message,
         state=state,
         user_id=message.from_user.id,
