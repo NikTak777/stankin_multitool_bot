@@ -228,3 +228,5 @@ docker-compose.override.yml
 *.sql.gz
 backup_*.sql
 backup_*.sql.gz
+
+*.json
