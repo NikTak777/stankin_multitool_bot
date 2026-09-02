@@ -10,6 +10,7 @@ from states.group_state import GroupState
 
 from keyboards.back_to_menu import get_back_inline_keyboard
 from keyboards.cancel_keyboard import get_cancel_inline_keyboard
+from keyboards.group import get_enter_code_group_keyboard
 
 # Декораторы
 from decorators.private_only import private_only
@@ -40,8 +41,9 @@ async def callback_user_group(callback: CallbackQuery, state: FSMContext):
     write_user_log(f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) нажал кнопку ввода группы")
     await callback.answer()
     await callback.message.edit_text(
-        text="Введите номер вашей группы (например, ИДБ-23-10):",
-        reply_markup=get_cancel_inline_keyboard("edit_profile_menu")
+        text="Выберете код вашей группы:",
+        reply_markup = await get_enter_code_group_keyboard()
+        # reply_markup=get_cancel_inline_keyboard("edit_profile_menu")
     )
     await state.set_state(GroupState.waiting_for_group)
 
