@@ -1,6 +1,7 @@
 import json
 import os
 import aiofiles
+import re
 
 from aiogram.types import ChatMemberAdministrator, ChatMemberOwner
 from bot import bot
@@ -41,10 +42,9 @@ def is_valid_group_name(name: str) -> bool:
     """
     Проверяет имя группы:
     - Формат: XXX-00-00
-    - или:   XXX-00-00(00)
+    - или:   XXX-00-00(...)
     """
-    import re
-    pattern = r"^[А-ЯA-Z]{2,}-\d{2}-\d{2}(\(\d{2}\))?$"
+    pattern = r"^[А-ЯЁ]{2,}-\d{2}-\d{2}(\(.*\))?$"
     return bool(re.match(pattern, name))
 
 
