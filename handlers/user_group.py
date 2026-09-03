@@ -1,10 +1,10 @@
 from aiogram import types, Router, F
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, ReplyKeyboardRemove
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 
 from utils.logger import write_user_log
-from utils.group_utils import is_valid_group_name, is_group_file_exists
+from utils.group_utils import is_valid_group_name, is_group_file_exists, format_subgroup
 from utils.database import set_user_group_subgroup
 from states.group_state import GroupSelectState
 
@@ -30,10 +30,14 @@ router = Router()
 @private_only
 @ensure_user_in_db
 @sync_username
-async def cmd_user_group(message: types.Message, state: FSMContext):
+async def cmd_user_group(message: Message, state: FSMContext):
     write_user_log(f"Пользователь {message.from_user.full_name} ({message.from_user.id}) вызвал /group")
     await message.answer(
-        text="Выберете код вашей группы:",
+        text=(
+            "Выберете код вашей группы\n"
+            "   или\n"
+            "Введите номер вашей группы (например, ИДБ-23-10):"
+        ),
         reply_markup = await get_enter_code_group_keyboard()
     )
     await state.set_state(GroupSelectState.choosing_code)
@@ -62,10 +66,6 @@ async def user_year_group_input(callback: CallbackQuery, state: FSMContext):
     selected_code = callback.data.split("_")[2]
     await state.update_data(group_code=selected_code)
 
-    #if not is_valid_group_name(group_name):
-     #   await message.answer("⚠️ Номер группы некорректный! Введите в формате XXX-00-00 (например, ИДБ-23-10):")
-      #  return
-
     # await message.answer("Введите номер вашей подгруппы (например, А или Б):", reply_markup=ReplyKeyboardRemove())
     await callback.message.edit_text(
         text="Выберете год поступления вашей группы",
@@ -78,7 +78,7 @@ async def user_year_group_input(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(StateFilter(GroupSelectState.choosing_year), F.data.startswith("group_year_"))
 async def user_name_group_input(callback: CallbackQuery, state: FSMContext):
     selected_year = callback.data.split("_")[2]
-    await state.update_data(group_name=selected_year)
+    await state.update_data(group_year=selected_year)
     selected_code = (await state.get_data())["group_code"]
 
     await callback.message.edit_text(
@@ -115,7 +115,7 @@ async def process_subgroup_input(callback: CallbackQuery, state: FSMContext):
     msg = f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) указал группу: {user_group}, подгруппа: {selected_subgroup}"
     write_user_log(msg)
 
-    msg_to_user = f"✅ Данные сохранены: Группа {user_group}, Подгруппа {selected_subgroup}."
+    msg_to_user = f"✅ Данные сохранены: Группа {user_group}, Подгруппа {format_subgroup(selected_subgroup)}."
 
     if not await is_group_file_exists(user_group):
         msg_to_user += f"\n\n⚠️ К сожалению, пока вы не можете смотреть расписание вашей группы, так как оно не появилось в системе."
@@ -125,5 +125,29 @@ async def process_subgroup_input(callback: CallbackQuery, state: FSMContext):
         reply_markup=get_back_inline_keyboard(back_to)
     )
     await state.clear()
+
+
+@router.message(StateFilter(GroupSelectState.choosing_code))
+async def user_full_group_input(message: Message, state: FSMContext):
+    selected_group = message.text
+
+    if not is_valid_group_name(selected_group):
+        await message.answer(
+            text=(
+                "⚠️ Номер группы некорректный!\n\n"
+                "Выберете код вашей группы\n"
+                "   или\n"
+                "Введите в формате XXX-00-00 (например, ИДБ-23-10):"
+            ),
+            reply_markup = await get_enter_code_group_keyboard()
+        )
+        return
+
+    await state.update_data(group_name=selected_group)
+    await message.answer(
+        text="Выберете вашу подгруппу:",
+        reply_markup=await get_select_subgroup_keyboard()
+    )
+    await state.set_state(GroupSelectState.choosing_subgroup)
 
 
