@@ -4,3 +4,4 @@ class GroupSelectState(StatesGroup):
     choosing_code = State()
     choosing_year = State()
     choosing_group = State()
+    choosing_subgroup = State()

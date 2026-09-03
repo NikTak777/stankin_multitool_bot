@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from services.group import get_available_group_codes, get_available_group_years, get_available_group_names
@@ -28,6 +28,16 @@ async def get_select_name_group_keyboard(user_group_code: str, user_group_year: 
 
     builder = InlineKeyboardBuilder()
     for group in groups['data']:
-        builder.button(text=group, callback_data=f"group_year_{group}")
+        builder.button(text=group, callback_data=f"group_name_{group}")
     builder.adjust(3)
     return builder.as_markup()
+
+
+async def get_select_subgroup_keyboard() -> InlineKeyboardMarkup:
+    keyboard = [
+        [
+            InlineKeyboardButton(text="А", callback_data="subgroup_a"),
+            InlineKeyboardButton(text="Б", callback_data="subgroup_b")
+        ]
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
