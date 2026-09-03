@@ -87,3 +87,17 @@ async def save_groups(groups: dict):
     except Exception as e:
         msg = f"❌ Ошибка при сохранении группы {groups}: {e}"
         await write_user_log(msg)
+
+
+SUBGROUPS_MAPPING: dict[str, str] = {
+        "A": "А",
+        "B": "Б"
+    }
+
+def format_subgroup(user_subgroup: str) -> str:
+    """Переводит обозначения подгруппы с английского на русский"""
+    clean_subgroup: str = user_subgroup.strip().upper()
+    return SUBGROUPS_MAPPING.get(
+        key=clean_subgroup,
+        default=clean_subgroup
+    )
