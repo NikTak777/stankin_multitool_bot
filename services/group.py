@@ -18,10 +18,15 @@ async def get_available_group_codes():
                     }
                 return response
     except aiohttp.ClientError:
-        return "connection", []
+        return {
+            "status": 500,
+            "data": []
+        }
     except asyncio.TimeoutError:
-        return "timeout", []
-
+        return {
+            "status": 408,
+            "data": []
+        }
 
 async def get_available_group_years(user_group_code: str):
     url = f"{base_url}/years"
