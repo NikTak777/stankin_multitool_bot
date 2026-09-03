@@ -11,6 +11,11 @@ async def get_available_group_codes():
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 response = await resp.json()
+                if resp.status != 200:
+                    return {
+                        "status": resp.status,
+                        "data": []
+                    }
                 return response
     except aiohttp.ClientError:
         return "connection", []
@@ -27,8 +32,19 @@ async def get_available_group_years(user_group_code: str):
                 params={"user_group_code": user_group_code}
             ) as resp:
                 response = await resp.json()
+                if resp.status != 200:
+                    return {
+                        "status": resp.status,
+                        "data": []
+                    }
                 return response
     except aiohttp.ClientError:
-        return "connection", []
+        return {
+            "status": 500,
+            "data": []
+        }
     except asyncio.TimeoutError:
-        return "timeout", []
+        return {
+            "status": 408,
+            "data": []
+        }
