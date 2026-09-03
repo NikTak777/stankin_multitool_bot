@@ -17,7 +17,6 @@ from keyboards.group import (
     get_select_subgroup_keyboard
 )
 
-# Декораторы
 from decorators.private_only import private_only
 from decorators.sync_username import sync_username
 from decorators.ensure_user_in_db import ensure_user_in_db
@@ -66,7 +65,6 @@ async def user_year_group_input(callback: CallbackQuery, state: FSMContext):
     selected_code = callback.data.split("_")[2]
     await state.update_data(group_code=selected_code)
 
-    # await message.answer("Введите номер вашей подгруппы (например, А или Б):", reply_markup=ReplyKeyboardRemove())
     await callback.message.edit_text(
         text="Выберете год поступления вашей группы",
         reply_markup = await get_select_year_group_keyboard(selected_code)
@@ -108,7 +106,7 @@ async def process_subgroup_input(callback: CallbackQuery, state: FSMContext):
     user_data = await state.get_data()
     user_group = user_data.get("group_name")
     from_schedule = user_data.get("from_schedule", False)
-    back_to = "start" if from_schedule else "info"
+    back_to = "schedule" if from_schedule else "info"
 
     set_user_group_subgroup(callback.from_user.id, user_group, selected_subgroup)
 
@@ -119,6 +117,8 @@ async def process_subgroup_input(callback: CallbackQuery, state: FSMContext):
 
     if not await is_group_file_exists(user_group):
         msg_to_user += f"\n\n⚠️ К сожалению, пока вы не можете смотреть расписание вашей группы, так как оно не появилось в системе."
+        if back_to != "info":
+            back_to = "start"
 
     await callback.message.edit_text(
         text=msg_to_user,
@@ -127,6 +127,7 @@ async def process_subgroup_input(callback: CallbackQuery, state: FSMContext):
     await state.clear()
 
 
+# Ввод номера группы вручную
 @router.message(StateFilter(GroupSelectState.choosing_code))
 async def user_full_group_input(message: Message, state: FSMContext):
     selected_group = message.text
