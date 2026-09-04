@@ -54,7 +54,7 @@ async def user_code_group_input(callback: CallbackQuery, state: FSMContext):
             "   или\n"
             "Введите номер вашей группы (например, ИДБ-23-10):"
         ),
-        reply_markup = await get_enter_code_group_keyboard(callback_target="profile")
+        reply_markup = await get_enter_code_group_keyboard(callback_target="info")
     )
     await state.set_state(GroupSelectState.choosing_code)
 
@@ -67,7 +67,7 @@ async def user_year_group_input(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.edit_text(
         text="Выберите год поступления вашей группы",
-        reply_markup = await get_select_year_group_keyboard(selected_code, callback_target="profile")
+        reply_markup = await get_select_year_group_keyboard(selected_code, callback_target="info")
     )
     await state.set_state(GroupSelectState.choosing_year)
 
@@ -81,7 +81,7 @@ async def user_name_group_input(callback: CallbackQuery, state: FSMContext):
 
     await callback.message.edit_text(
         text="Выберите вашу группу:",
-        reply_markup = await get_select_name_group_keyboard(selected_code, selected_year, callback_target="profile")
+        reply_markup = await get_select_name_group_keyboard(selected_code, selected_year, callback_target="info")
     )
     await state.set_state(GroupSelectState.choosing_group)
 
