@@ -33,7 +33,7 @@ async def cmd_user_group(message: Message, state: FSMContext):
     write_user_log(f"Пользователь {message.from_user.full_name} ({message.from_user.id}) вызвал /group")
     await message.answer(
         text=(
-            "Выберете код вашей группы\n"
+            "Выберите код вашей группы\n"
             "   или\n"
             "Введите номер вашей группы (например, ИДБ-23-10):"
         ),
@@ -50,11 +50,11 @@ async def user_code_group_input(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await callback.message.edit_text(
         text=(
-            "Выберете код вашей группы\n"
+            "Выберите код вашей группы\n"
             "   или\n"
             "Введите номер вашей группы (например, ИДБ-23-10):"
         ),
-        reply_markup = await get_enter_code_group_keyboard()
+        reply_markup = await get_enter_code_group_keyboard(callback_target="profile")
     )
     await state.set_state(GroupSelectState.choosing_code)
 
@@ -66,8 +66,8 @@ async def user_year_group_input(callback: CallbackQuery, state: FSMContext):
     await state.update_data(group_code=selected_code)
 
     await callback.message.edit_text(
-        text="Выберете год поступления вашей группы",
-        reply_markup = await get_select_year_group_keyboard(selected_code)
+        text="Выберите год поступления вашей группы",
+        reply_markup = await get_select_year_group_keyboard(selected_code, callback_target="profile")
     )
     await state.set_state(GroupSelectState.choosing_year)
 
@@ -80,8 +80,8 @@ async def user_name_group_input(callback: CallbackQuery, state: FSMContext):
     selected_code = (await state.get_data())["group_code"]
 
     await callback.message.edit_text(
-        "Выберете вашу группу:",
-        reply_markup = await get_select_name_group_keyboard(selected_code, selected_year)
+        text="Выберите вашу группу:",
+        reply_markup = await get_select_name_group_keyboard(selected_code, selected_year, callback_target="profile")
     )
     await state.set_state(GroupSelectState.choosing_group)
 
@@ -130,7 +130,7 @@ async def process_subgroup_input(callback: CallbackQuery, state: FSMContext):
 # Ввод номера группы вручную
 @router.message(StateFilter(GroupSelectState.choosing_code))
 async def user_full_group_input(message: Message, state: FSMContext):
-    selected_group = message.text
+    selected_group = message.text.strip()
 
     if not is_valid_group_name(selected_group):
         await message.answer(
