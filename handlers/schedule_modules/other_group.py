@@ -9,10 +9,16 @@ from datetime import datetime, timedelta
 import pytz
 
 from states.other_group_schedule import OtherGroupState
+from states.group_state import OtherGroupSelectState
 
 from keyboards.cancel_keyboard import get_cancel_inline_keyboard
 from keyboards.schedule_keyboards import get_other_group_schedule_keyboard
 from keyboards.back_to_menu import get_back_inline_keyboard
+from keyboards.group import (
+    get_enter_code_group_keyboard,
+    get_select_year_group_keyboard,
+    get_select_name_group_keyboard
+)
 
 from services.schedule_service import format_schedule, load_schedule
 
@@ -80,30 +86,83 @@ async def choose_other_group_schedule(callback: CallbackQuery, state: FSMContext
     write_user_log(f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) нажал кнопку ввода другой группы")
     await callback.answer()
     await callback.message.edit_text(
-        text="Введите номер группы, расписание которой хотите посмотреть (например, ИДБ-23-10):",
-        reply_markup=get_cancel_inline_keyboard("schedule")
+        text=(
+            "Выберите код группы, расписание которой хотите посмотреть\n"
+            "   или\n"
+            "Введите номер группы целиком (например, ИДБ-23-10):"
+        ),
+        reply_markup = await get_enter_code_group_keyboard(callback_target="schedule")
     )
-    await state.set_state(OtherGroupState.waiting_for_group)
+    await state.set_state(OtherGroupSelectState.choosing_code)
 
 
-@router.message(StateFilter(OtherGroupState.waiting_for_group))
-async def process_group_input(message: Message, state: FSMContext):
+@router.callback_query(StateFilter(OtherGroupSelectState.choosing_code), F.data.startswith("group_code_"))
+async def other_year_group_input(callback: CallbackQuery, state: FSMContext):
+    selected_code = callback.data.split("_")[2]
+    await state.update_data(group_code=selected_code)
+
+    await callback.message.edit_text(
+        text="Выберите год поступления группы",
+        reply_markup=await get_select_year_group_keyboard(selected_code, callback_target="schedule")
+    )
+    await state.set_state(OtherGroupSelectState.choosing_year)
+
+
+@router.callback_query(StateFilter(OtherGroupSelectState.choosing_year), F.data.startswith("group_year_"))
+async def other_name_group_input(callback: CallbackQuery, state: FSMContext):
+    selected_year = callback.data.split("_")[2]
+    await state.update_data(group_year=selected_year)
+    selected_code = (await state.get_data())["group_code"]
+
+    await callback.message.edit_text(
+        text="Выберите группу:",
+        reply_markup = await get_select_name_group_keyboard(selected_code, selected_year, callback_target="schedule")
+    )
+    await state.set_state(OtherGroupSelectState.choosing_group)
+
+
+@router.callback_query(StateFilter(OtherGroupSelectState.choosing_group), F.data.startswith("group_name_"))
+async def complete_other_group_input(callback: CallbackQuery, state: FSMContext):
+    selected_group = callback.data.split("_")[2]
+    await state.update_data(group_name=selected_group)
+
+    today = datetime.now(tz=tz_moscow)
+
+    await show_other_schedule_for_date(
+        user_id=callback.from_user.id,
+        user_fullname=callback.from_user.full_name,
+        group_name=selected_group,
+        target_date=today,
+        callback=callback
+    )
+
+
+@router.message(StateFilter(OtherGroupSelectState.choosing_code))
+async def full_other_group_input(message: Message, state: FSMContext):
     """Проверить введённое имя группы и показать расписание"""
 
-    other_name = message.text.strip()
+    selected_group = message.text.strip()
 
-    if not is_valid_group_name(other_name):
-        await message.answer("⚠️ Номер группы некорректный! Введите в формате XXX-00-00 (например, ИДБ-23-10):")
+    if not is_valid_group_name(selected_group):
+        await message.answer(
+            text=(
+                "⚠️ Номер группы некорректный!\n\n"
+                "Выберете код вашей группы\n"
+                "   или\n"
+                "Введите в формате XXX-00-00 (например, ИДБ-23-10):"
+            ),
+            reply_markup=await get_enter_code_group_keyboard()
+        )
         return
 
-    await state.update_data(group_name=other_name)
+    await state.update_data(group_name=selected_group)
 
     today = datetime.now(tz=tz_moscow)
 
     await show_other_schedule_for_date(
         user_id=message.from_user.id,
         user_fullname=message.from_user.full_name,
-        group_name=other_name,
+        group_name=selected_group,
         target_date=today,
         message=message
     )
@@ -261,10 +320,17 @@ async def show_other_schedule_for_date(
         )
 
     except FileNotFoundError:
-        await (callback.message if callback else message).answer(
-            text=f"❌ Не найдено расписание для группы {group_name}.",
-            reply_markup=get_back_inline_keyboard("schedule")
-        )
+        error_msg = f"❌ Не найдено расписание для группы {group_name}."
+        if callback:
+            await callback.message.edit_text(
+                text=error_msg,
+                reply_markup=get_back_inline_keyboard("schedule")
+            )
+        else:
+            await message.answer(
+                text=error_msg,
+                reply_markup=get_back_inline_keyboard("schedule")
+            )
     except TelegramBadRequest as e:
         if "message is not modified" not in str(e):
             print(f"TelegramBadRequest: {e}")
