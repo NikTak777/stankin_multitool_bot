@@ -195,16 +195,17 @@ async def _send_lesson_ended(user_id: int, ended_lesson: Dict[str, Any],
 
 
 def _get_next_check_time(now: datetime) -> datetime:
-    """Вычисляет следующее время проверки (минута кратна 10: 00, 10, 20, 30, 40, 50)"""
+    """Обновлённый вариант функции. Вычисляет следующее время проверки
+    Минута кратна 5: 00, 05, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55"""
     current_minute = now.minute
     current_second = now.second
     
-    # Если текущая минута уже кратна 10 и секунды = 0, следующая проверка через 10 минут
-    if current_minute % 10 == 0 and current_second == 0:
-        next_minute = current_minute + 10
+    # Если текущая минута уже кратна 5 и секунды = 0, следующая проверка через 5 минут
+    if current_minute % 5 == 0 and current_second == 0:
+        next_minute = current_minute + 5
     else:
-        # Вычисляем следующую "круглую" минуту
-        next_minute = ((current_minute // 10) + 1) * 10
+        # Вычисляем следующую подходящую минуту
+        next_minute = ((current_minute // 5) + 1) * 5
     
     if next_minute >= 60:
         # Переходим на следующий час
@@ -229,7 +230,7 @@ async def check_schedule_notifications():
             # Проверяем, включен ли таск
             if not get_task_status("schedule_notifications"):
                 # Если таск выключен, проверяем раз в 10 минут
-                await asyncio.sleep(600)
+                await asyncio.sleep(300)
                 continue
             
             now = _now_msk()

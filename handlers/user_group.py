@@ -1,17 +1,22 @@
 from aiogram import types, Router, F
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, ReplyKeyboardRemove
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 
 from utils.logger import write_user_log
-from utils.group_utils import is_valid_group_name, is_group_file_exists
+from utils.group_utils import is_valid_group_name, is_group_file_exists, format_subgroup
 from utils.database import set_user_group_subgroup
-from states.group_state import GroupState
+from states.group_state import GroupSelectState
 
 from keyboards.back_to_menu import get_back_inline_keyboard
 from keyboards.cancel_keyboard import get_cancel_inline_keyboard
+from keyboards.group import (
+    get_enter_code_group_keyboard,
+    get_select_year_group_keyboard,
+    get_select_name_group_keyboard,
+    get_select_subgroup_keyboard
+)
 
-# Декораторы
 from decorators.private_only import private_only
 from decorators.sync_username import sync_username
 from decorators.ensure_user_in_db import ensure_user_in_db
@@ -24,73 +29,126 @@ router = Router()
 @private_only
 @ensure_user_in_db
 @sync_username
-async def cmd_user_group(message: types.Message, state: FSMContext):
+async def cmd_user_group(message: Message, state: FSMContext):
     write_user_log(f"Пользователь {message.from_user.full_name} ({message.from_user.id}) вызвал /group")
     await message.answer(
-        text="Введите номер вашей группы (например, ИДБ-23-10):",
-        reply_markup=get_cancel_inline_keyboard("edit_profile_menu")
+        text=(
+            "Выберите код вашей группы\n"
+            "   или\n"
+            "Введите номер вашей группы (например, ИДБ-23-10):"
+        ),
+        reply_markup = await get_enter_code_group_keyboard()
     )
-    await state.set_state(GroupState.waiting_for_group)
+    await state.set_state(GroupSelectState.choosing_code)
 
 
-# Обработчик callback-кнопки
+# Выбор кода группы ХХХ через inline-клавиатуру
 @router.callback_query(F.data == "group")
 @sync_username
-async def callback_user_group(callback: CallbackQuery, state: FSMContext):
+async def user_code_group_input(callback: CallbackQuery, state: FSMContext):
     write_user_log(f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) нажал кнопку ввода группы")
     await callback.answer()
     await callback.message.edit_text(
-        text="Введите номер вашей группы (например, ИДБ-23-10):",
-        reply_markup=get_cancel_inline_keyboard("edit_profile_menu")
+        text=(
+            "Выберите код вашей группы\n"
+            "   или\n"
+            "Введите номер вашей группы (например, ИДБ-23-10):"
+        ),
+        reply_markup = await get_enter_code_group_keyboard(callback_target="info")
     )
-    await state.set_state(GroupState.waiting_for_group)
+    await state.set_state(GroupSelectState.choosing_code)
 
 
-# Ввод группы
-@router.message(StateFilter(GroupState.waiting_for_group))
-async def process_group_input(message: types.Message, state: FSMContext):
-    group_name = message.text.strip()
+# Выбор года группы 00 через inline-клавиатуру
+@router.callback_query(StateFilter(GroupSelectState.choosing_code), F.data.startswith("group_code_"))
+async def user_year_group_input(callback: CallbackQuery, state: FSMContext):
+    selected_code = callback.data.split("_")[2]
+    await state.update_data(group_code=selected_code)
 
-    if not is_valid_group_name(group_name):
-        await message.answer("⚠️ Номер группы некорректный! Введите в формате XXX-00-00 (например, ИДБ-23-10):")
-        return
-
-    await state.update_data(user_group=group_name)
-    await message.answer("Введите номер вашей подгруппы (например, А или Б):", reply_markup=ReplyKeyboardRemove())
-    await state.set_state(GroupState.waiting_for_subgroup)
+    await callback.message.edit_text(
+        text="Выберите год поступления вашей группы",
+        reply_markup = await get_select_year_group_keyboard(selected_code, callback_target="info")
+    )
+    await state.set_state(GroupSelectState.choosing_year)
 
 
-# Ввод подгруппы
-@router.message(StateFilter(GroupState.waiting_for_subgroup))
-async def process_subgroup_input(message: types.Message, state: FSMContext):
-    user_subgroup = message.text.strip().upper()
+# Выбор названия группы XXX-00-00(prefix) через inline-клавиатуру
+@router.callback_query(StateFilter(GroupSelectState.choosing_year), F.data.startswith("group_year_"))
+async def user_name_group_input(callback: CallbackQuery, state: FSMContext):
+    selected_year = callback.data.split("_")[2]
+    await state.update_data(group_year=selected_year)
+    selected_code = (await state.get_data())["group_code"]
+
+    await callback.message.edit_text(
+        text="Выберите вашу группу:",
+        reply_markup = await get_select_name_group_keyboard(selected_code, selected_year, callback_target="info")
+    )
+    await state.set_state(GroupSelectState.choosing_group)
+
+
+# Выбор подгруппы А или Б через inline-клавиатуру
+@router.callback_query(StateFilter(GroupSelectState.choosing_group), F.data.startswith("group_name_"))
+async def user_name_subgroup_input(callback: CallbackQuery, state: FSMContext):
+    selected_group = callback.data.split("_")[2]
+    await state.update_data(group_name=selected_group)
+
+    await callback.message.edit_text(
+        "Выберете вашу подгруппу:",
+        reply_markup = await get_select_subgroup_keyboard()
+    )
+    await state.set_state(GroupSelectState.choosing_subgroup)
+
+
+# Сохранение данных о группе и подгруппе
+@router.callback_query(StateFilter(GroupSelectState.choosing_subgroup), F.data.startswith("subgroup_"))
+async def process_subgroup_input(callback: CallbackQuery, state: FSMContext):
+    selected_subgroup = callback.data.split("_")[1].upper()
     user_data = await state.get_data()
-    user_group = user_data.get("user_group")
+    user_group = user_data.get("group_name")
     from_schedule = user_data.get("from_schedule", False)
-    back_to = "start" if from_schedule else "info"
+    back_to = "schedule" if from_schedule else "info"
 
-    if user_subgroup not in ["А", "Б"]:
-        await message.answer("⚠️ Подгруппа указана неверно! Введите либо 'А', либо 'Б':")
-        return
+    set_user_group_subgroup(callback.from_user.id, user_group, selected_subgroup)
 
-    db_subgroup = user_subgroup
-
-    if user_subgroup == "А":
-        db_subgroup = "A"
-    elif user_subgroup == "Б":
-        db_subgroup = "B"
-
-    set_user_group_subgroup(message.from_user.id, user_group, db_subgroup)
-
-    msg = f"Пользователь {message.from_user.full_name} ({message.from_user.id}) указал группу: {user_group}, подгруппа: {user_subgroup}"
+    msg = f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) указал группу: {user_group}, подгруппа: {selected_subgroup}"
     write_user_log(msg)
 
-    msg_to_user = f"✅ Данные сохранены: Группа {user_group}, Подгруппа {user_subgroup}."
+    msg_to_user = f"✅ Данные сохранены: Группа {user_group}, Подгруппа {format_subgroup(selected_subgroup)}."
 
     if not await is_group_file_exists(user_group):
         msg_to_user += f"\n\n⚠️ К сожалению, пока вы не можете смотреть расписание вашей группы, так как оно не появилось в системе."
+        if back_to != "info":
+            back_to = "start"
 
-    await message.answer(msg_to_user, reply_markup=get_back_inline_keyboard(back_to))
+    await callback.message.edit_text(
+        text=msg_to_user,
+        reply_markup=get_back_inline_keyboard(back_to)
+    )
     await state.clear()
+
+
+# Ввод номера группы вручную
+@router.message(StateFilter(GroupSelectState.choosing_code))
+async def user_full_group_input(message: Message, state: FSMContext):
+    selected_group = message.text.strip()
+
+    if not is_valid_group_name(selected_group):
+        await message.answer(
+            text=(
+                "⚠️ Номер группы некорректный!\n\n"
+                "Выберете код вашей группы\n"
+                "   или\n"
+                "Введите в формате XXX-00-00 (например, ИДБ-23-10):"
+            ),
+            reply_markup = await get_enter_code_group_keyboard()
+        )
+        return
+
+    await state.update_data(group_name=selected_group)
+    await message.answer(
+        text="Выберете вашу подгруппу:",
+        reply_markup=await get_select_subgroup_keyboard()
+    )
+    await state.set_state(GroupSelectState.choosing_subgroup)
 
 

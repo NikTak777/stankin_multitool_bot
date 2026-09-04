@@ -1,17 +1,20 @@
 from aiogram import types, Bot
 from aiogram.fsm.context import FSMContext
-from aiogram.types import ReplyKeyboardRemove
+from aiogram.types import ReplyKeyboardRemove, ChatMemberAdministrator, ChatMemberOwner
 from aiogram.exceptions import TelegramBadRequest
 
 from keyboards.cancel_keyboard import get_cancel_inline_keyboard
+from keyboards.group import get_enter_code_group_keyboard
+
+from states.group_state import GroupSelectState
 
 from utils.group_utils import load_groups
-
 from utils.database import get_real_user_name, check_user_exists, add_user_to_db, get_user_info
-from aiogram.types import ChatMemberAdministrator, ChatMemberOwner
+
 from bot import bot
 
 from config import ADMIN_ID
+
 
 async def get_user_name(obj) -> str:
     """Возвращает настоящее имя пользователя, если оно есть в БД, иначе — Telegram full_name."""
@@ -48,11 +51,6 @@ async def check_group_user(
        Если message передан — редактируем его, иначе отправляем новое сообщение."""
     user_id = user.id
 
-    # Проверяем, есть ли пользователь
-    existing_user = check_user_exists(user_id)
-    if not existing_user:
-        add_user_to_db(user_id, user.username, user.full_name)
-
     # Берём инфо
     user_info = get_user_info(user_id)
     user_group, user_subgroup = user_info["user_group"], user_info["user_subgroup"]
@@ -60,23 +58,30 @@ async def check_group_user(
 
     # Если не указаны группа или подгруппа
     if not user_group or not user_subgroup:
-        text = f"Привет, {user_name}! Введите номер вашей группы (например, ИДБ-23-10):"
+
+        await state.set_state(GroupSelectState.choosing_code)
+        await state.update_data(from_schedule=from_schedule)
+
+        text = (
+            f"Привет, {user_name}!\n\n"
+            f"Выберете код вашей группы\n"
+            f"   или\n"
+            f"Введите номер вашей группы (например, ИДБ-23-10):"
+        )
 
         if callback:
             # Если вызов из инлайн-кнопки — редактируем сообщение
             if callback:
                 # редактируем сообщение без ReplyKeyboardRemove
-                await callback.message.edit_text(text, reply_markup=get_cancel_inline_keyboard("start"))
+                await callback.message.edit_text(text, reply_markup = await get_enter_code_group_keyboard())
                 await callback.answer()  # Удаляем эффект загрузки
             elif message:
                 # обычное новое сообщение — можно убрать клавиатуру
-                await bot.send_message(user_id, text, reply_markup=get_cancel_inline_keyboard("start"))
+                await bot.send_message(user_id, text, reply_markup = await get_enter_code_group_keyboard())
         elif message:
             # Если вызов из команды /schedule — новое сообщение
-            await bot.send_message(user_id, text, reply_markup=get_cancel_inline_keyboard("start"))
+            await bot.send_message(user_id, text, reply_markup = await get_enter_code_group_keyboard())
 
-        await state.set_state("GroupState:waiting_for_group")
-        await state.update_data(from_schedule=from_schedule)
         return False
 
     return True
