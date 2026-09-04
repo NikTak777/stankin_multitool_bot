@@ -1,6 +1,7 @@
 import json
 import os
 import aiofiles
+import re
 
 from aiogram.types import ChatMemberAdministrator, ChatMemberOwner
 from bot import bot
@@ -41,10 +42,9 @@ def is_valid_group_name(name: str) -> bool:
     """
     Проверяет имя группы:
     - Формат: XXX-00-00
-    - или:   XXX-00-00(00)
+    - или:   XXX-00-00(...)
     """
-    import re
-    pattern = r"^[А-ЯA-Z]{2,}-\d{2}-\d{2}(\(\d{2}\))?$"
+    pattern = r"^[А-ЯЁ]{2,}-\d{2}-\d{2}(\(.*\))?$"
     return bool(re.match(pattern, name))
 
 
@@ -87,3 +87,17 @@ async def save_groups(groups: dict):
     except Exception as e:
         msg = f"❌ Ошибка при сохранении группы {groups}: {e}"
         await write_user_log(msg)
+
+
+SUBGROUPS_MAPPING: dict[str, str] = {
+        "A": "А",
+        "B": "Б"
+    }
+
+def format_subgroup(user_subgroup: str) -> str:
+    """Переводит обозначения подгруппы с английского на русский"""
+    clean_subgroup: str = user_subgroup.strip().upper()
+    return SUBGROUPS_MAPPING.get(
+        clean_subgroup, # key
+        clean_subgroup  # default
+    )

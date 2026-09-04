@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     BIRTHDAY_DATABASE: str = Field(default="database/birthdate_list.db", description="Legacy SQLite path (for migration)")
 
     SCHEDULE_API_BASE_URL: str = Field(
-        default="http://127.0.0.1:8000/v1",
+        default="http://api:8000/v1",
         description="Базовый URL multitool_api (без завершающего слэша), например https://example.com/v1",
     )
     
