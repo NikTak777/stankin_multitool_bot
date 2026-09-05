@@ -6,6 +6,7 @@ def get_start_inline_keyboard(
         is_bot_admin: bool = False
 ) -> InlineKeyboardMarkup:
     keyboard = [
+        [InlineKeyboardButton(text="🔥 Конкурс на Telegram Premium", callback_data="contest", style="primary")],
         [InlineKeyboardButton(text="📅 Расписание", callback_data="schedule")],
         [InlineKeyboardButton(text="👨‍🏫 Расписание преподавателя", callback_data="professor_schedule_open")],
         [InlineKeyboardButton(text="👤 Профиль", callback_data="info")],
