@@ -1,21 +1,24 @@
+from datetime import datetime
+
 from utils.db_connection import get_db_connection
 
-def is_active_user_in_range(user_id: int, days_range: int, days_count: int):
-    """
-    Возвращает число активных дней из указанного диапазона,
-    либо False если неправильно указаны параметры.
-    """
-    if days_range >= days_count:
-        with get_db_connection() as con:
-            cur = con.cursor()
 
-            cur.execute("""
-                SELECT COUNT(DISTINCT ts)
-                FROM user_activity
-                WHERE user_id = 
-            """, (user_id, days_count, ))
-            (n,) = cur.fetchone()
+def get_active_days_count(user_id: int, start_date: datetime, end_date: datetime, activity: str = "schedule") -> int:
+    """
+    Возвращает количество уникальных дней из указанного диапазона дат,
+    в которые пользователь совершал целевую активность.
+    """
+    with get_db_connection() as con:
+        cur = con.cursor()
 
-            return n or 0
-    else:
-        return False
+        cur.execute("""
+            SELECT COUNT(DISTINCT DATE(ts))
+            FROM user_activity
+            WHERE user_id = %s
+            AND ts >= %s 
+            AND ts <= %s
+            AND event = %s
+        """, (user_id, start_date, end_date, activity))
+
+        result = cur.fetchone()
+        return result[0] if result else 0
