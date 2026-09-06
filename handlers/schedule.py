@@ -16,6 +16,7 @@ from states.schedule import ScheduleState
 from utils.logger import write_user_log
 from utils.user_utils import check_group_user
 from utils.database import get_user_info
+from utils.database_utils.database_statistic import log_user_activity
 
 # Декораторы
 from decorators.private_only import private_only
@@ -43,6 +44,7 @@ async def cmd_schedule(message: types.Message, state: FSMContext, bot: Bot):
     if not user_has_group:
         return
 
+    log_user_activity(message.from_user.id, "schedule")
     today = datetime.now(tz=tz_moscow)
     await show_schedule_for_date(message.from_user.id, message.from_user.full_name, today, message=message)
 
@@ -55,6 +57,7 @@ async def show_today_schedule(callback: types.CallbackQuery, state: FSMContext, 
     if not user_has_group:
         return
 
+    log_user_activity(callback.from_user.id, "schedule")
     today = datetime.now(tz=tz_moscow) # - timedelta(days=4)  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     await show_schedule_for_date(callback.from_user.id, callback.from_user.full_name, today, callback=callback)
     await callback.answer()
