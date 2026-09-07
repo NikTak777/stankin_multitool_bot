@@ -1,4 +1,5 @@
 from datetime import datetime
+from random import choices
 
 from utils.database_utils.friends import get_list_friends
 from utils.database_utils.contest import get_active_days_count
@@ -137,3 +138,26 @@ def get_win_chance(win_weight: int) -> float:
 def get_user_weight(count_active_friends: int, count_inactive_friends: int) -> int:
     user_weight: int = count_active_friends * 3 + min(count_inactive_friends, 10)
     return user_weight
+
+
+def start_raffle():
+    all_users: list[int] = get_all_user_ids()
+    active_users: list[int] = []
+    weight_users: list[int] = []
+
+    for user_id in all_users:
+        if get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
+            friends: list[dict] = get_friends_activity(user_id)
+            count_active_friends: int = 0
+            count_inactive_friends: int = 0
+            for friend in friends:
+                if friend['count'] >= 3:
+                    count_active_friends += 1
+                else:
+                    count_inactive_friends += 1
+            if count_active_friends >= 3:
+                active_users.append(user_id)
+                weight_users.append(get_user_weight(count_active_friends, count_inactive_friends))
+
+    win_user_id: list[int] = choices(active_users, weights=weight_users, k=1)
+    return win_user_id
