@@ -76,7 +76,7 @@ def check_conditions(user_id: int) -> str:
 
     info_msg += f"{friends_list}\n\n"
 
-    win_weight: int = count_active_friends * 3 + count_inactive_friends
+    win_weight: int = get_user_weight(count_active_friends, count_inactive_friends)
 
     info_msg += f"Ваше количество очков: {win_weight}\n"
 
@@ -122,8 +122,13 @@ def get_win_chance(win_weight: int) -> float:
                 else:
                     count_inactive_friends += 1
             if count_active_friends >= 3:
-                other_weight += count_active_friends * 3 + count_inactive_friends
+                other_weight += get_user_weight(count_active_friends, count_inactive_friends)
 
     if other_weight == 0:
         return 0
     return win_weight / other_weight
+
+
+def get_user_weight(count_active_friends: int, count_inactive_friends: int) -> int:
+    user_weight: int = count_active_friends * 3 + min(count_inactive_friends, 10)
+    return user_weight
