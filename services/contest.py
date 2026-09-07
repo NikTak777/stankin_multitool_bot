@@ -64,11 +64,16 @@ def check_conditions(user_id: int) -> str:
     count_inactive_friends = 0
     friends_list = "Сводка о ваших друзьях:\n"
     for friend in friends:
-        friends_list += f"Друг: {get_user_info(friend['friend_id'])['user_name']}, активность {friend['count']} из {ACTIVE_DAYS_COUNT}\n"
+        count = friend['count']
+        friend_status = "✅ Активен" if count >= 3 else "❌ Неактивен"
+        friends_list += f"{friend_status} {get_user_info(friend['friend_id'])['user_name']}, активность {count} из {ACTIVE_DAYS_COUNT}\n"
         if friend['count'] >= 3:
             count_active_friends += 1
         else:
             count_inactive_friends += 1
+
+        if (count_active_friends + count_inactive_friends) == 10:
+            break
 
     friend_status = "✅" if count_active_friends >= 3 else "❌"
 
@@ -105,7 +110,7 @@ def get_friends_activity(user_id: int) -> list[dict]:
             }
         )
 
-    return activity
+    return sorted(activity, count)
 
 
 def get_win_chance(win_weight: int) -> float:
