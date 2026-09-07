@@ -1,5 +1,6 @@
 from datetime import datetime
 from random import choices
+from operator import itemgetter
 
 from utils.database_utils.friends import get_list_friends
 from utils.database_utils.contest import get_active_days_count
@@ -111,7 +112,7 @@ def get_friends_activity(user_id: int) -> list[dict]:
             }
         )
 
-    return sorted(activity, count)
+    return sorted(activity, key=itemgetter("count"), reverse=True)
 
 
 def get_win_chance(win_weight: int) -> float:
