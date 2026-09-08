@@ -63,8 +63,13 @@ def sanitize_professor_slug(name: str) -> str:
     s = name.strip()
     for c in '<>:"/\\|?*':
         s = s.replace(c, "_")
-    s = re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"\s+", " ", s).strip().rstrip('.')
     return s
+
+
+def is_full_slug(name: str) -> bool:
+    """Проверяет, пришло ли полное ФИО или же просто фамилия"""
+    return " " in name and "." in name
 
 
 def format_professor_schedule_day(
@@ -154,3 +159,30 @@ async def fetch_professor_schedule_for_day(
         return "connection", []
     except asyncio.TimeoutError:
         return "timeout", []
+
+
+async def get_available_professors(last_name: str):
+    url = f"{SCHEDULE_API_BASE_URL}/professor"
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                url,
+                params={"last_name": last_name}
+            ) as resp:
+                response = await resp.json()
+                if resp.status != 200:
+                    return {
+                        "status": resp.status,
+                        "data": []
+                    }
+                return response
+    except aiohttp.ClientError:
+        return {
+            "status": 500,
+            "data": []
+        }
+    except asyncio.TimeoutError:
+        return {
+            "status": 408,
+            "data": []
+        }
