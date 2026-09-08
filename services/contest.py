@@ -55,41 +55,38 @@ def check_conditions(user_id: int) -> str:
 
     active_days = get_active_days_count(user_id, START_DATE, END_DATE)
     if active_days < ACTIVE_DAYS_COUNT:
-        user_status = "❌"
+        info_msg += f"❌ Ваша активность: невыполнена ({active_days} из {ACTIVE_DAYS_COUNT} дн.)\n"
     else:
-        user_status = "✅"
-    info_msg += f"{user_status} Ваша активность: {active_days} из {ACTIVE_DAYS_COUNT}\n"
+        info_msg += f"✅ Ваша активность: выполнена ({active_days} из {ACTIVE_DAYS_COUNT} дн.)\n"
 
     # 5. Список активности друзей
     friends: list[dict] = get_friends_activity(user_id)
     count_active_friends = 0
     count_inactive_friends = 0
-    friends_list = "Сводка о ваших друзьях:\n"
+    friends_list_text = "Сводка о ваших друзьях:\n"
     for friend in friends:
-        count = friend['count']
-        friend_status = "✅ Активен" if count >= 3 else "❌ Неактивен"
-        friends_list += f"{friend_status} {get_user_info(friend['friend_id'])['user_name']}, активность {count} из {ACTIVE_DAYS_COUNT}\n"
+        friend_name: str = get_user_info(friend['friend_id'])['user_name']
+        count: int = friend['count']
         if friend['count'] >= 3:
+            friends_list_text += f"⭐️ {friend_name}: активен ({friend['count']} из {ACTIVE_DAYS_COUNT} дн.)\n"
             count_active_friends += 1
         else:
+            friends_list_text += f"💤 {friend_name}: мало активности ({friend['count']} из {ACTIVE_DAYS_COUNT} дн.)\n"
             count_inactive_friends += 1
 
-        if (count_active_friends + count_inactive_friends) == 10:
-            break
+    if count_active_friends >= 3:
+        info_msg += f"✅ Активных друзей: выполнено ({count_active_friends} из {ACTIVE_DAYS_COUNT} чел.)\n\n"
+    else:
+        info_msg += f"❌ Активных друзей: невыполнено ({count_active_friends} из {ACTIVE_DAYS_COUNT} чел.)\n\n"
 
-    friend_status = "✅" if count_active_friends >= 3 else "❌"
-
-    info_msg += f"{friend_status} Активных друзей: {count_active_friends} из {ACTIVE_DAYS_COUNT}\n\n"
-
-    info_msg += f"{friends_list}\n\n"
+    info_msg += f"{friends_list_text}\n\n"
 
     win_weight: int = get_user_weight(count_active_friends, count_inactive_friends)
-
     info_msg += f"Ваше количество очков: {win_weight}\n"
 
-    win_chance: float = get_win_chance(win_weight)
-
-    info_msg += f"Ваш шанс победить: {win_chance}\n"
+    win_chance, top_percent = get_contest_stats(win_weight)
+    info_msg += f"🎯 Текущая вероятность победы: {win_chance}%\n"
+    info_msg += f"📈 Ваш статус: Вы входите в Топ-{top_percent}% участников с наивысшими шансами!\n"
 
     return info_msg
 
@@ -115,25 +112,39 @@ def get_friends_activity(user_id: int) -> list[dict]:
     return sorted(activity, key=itemgetter("count"), reverse=True)
 
 
-def get_win_chance(win_weight: int) -> float:
-    other_weight: int = 0
+def get_contest_stats(user_weight: int) -> tuple[float, int]:
+    all_eligible_weights: list[int] = []
     users_list: list[int] = get_all_user_ids()
+
     for user_id in users_list:
         if get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
             friends: list[dict] = get_friends_activity(user_id)
             count_active_friends: int = 0
             count_inactive_friends: int = 0
+
             for friend in friends:
                 if friend['count'] >= 3:
                     count_active_friends += 1
                 else:
                     count_inactive_friends += 1
             if count_active_friends >= 3:
-                other_weight += get_user_weight(count_active_friends, count_inactive_friends)
+                weight = get_user_weight(count_active_friends, count_inactive_friends)
+                all_eligible_weights.append(weight)
 
-    if other_weight == 0:
-        return 0
-    return win_weight / other_weight
+    total_weight = sum(all_eligible_weights)
+    if total_weight == 0:
+        return 0.0, 100
+
+    win_chance = (user_weight / total_weight) * 100
+
+    total_eligible = len(all_eligible_weights)
+    better_users = sum(1 for w in all_eligible_weights if w > user_weight)
+
+    top_percent = int((better_users / total_eligible) * 100)
+    if top_percent == 0:
+        top_percent = 1
+
+    return round(win_chance, 2), top_percent
 
 
 def get_user_weight(count_active_friends: int, count_inactive_friends: int) -> int:
@@ -141,7 +152,7 @@ def get_user_weight(count_active_friends: int, count_inactive_friends: int) -> i
     return user_weight
 
 
-def start_raffle():
+def start_raffle() -> int:
     all_users: list[int] = get_all_user_ids()
     active_users: list[int] = []
     weight_users: list[int] = []
@@ -161,4 +172,49 @@ def start_raffle():
                 weight_users.append(get_user_weight(count_active_friends, count_inactive_friends))
 
     win_user_id: list[int] = choices(active_users, weights=weight_users, k=1)
-    return win_user_id
+    return win_user_id[0]
+
+
+def get_all_contest_stats() -> str:
+    all_users: list[int] = get_all_user_ids()
+    eligible_users: list[dict] = []
+    total_weight: int = 0
+
+    for user_id in all_users:
+        if get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
+            friends: list[dict] = get_friends_activity(user_id)
+            count_active_friends: int = 0
+            count_inactive_friends: int = 0
+
+            for friend in friends:
+                if friend['count'] >= 3:
+                    count_active_friends += 1
+                else:
+                    count_inactive_friends += 1
+
+            if count_active_friends >= 3:
+                weight = get_user_weight(count_active_friends, count_inactive_friends)
+                total_weight += weight
+
+                user_name = get_user_info(user_id).get('user_name', f"ID {user_id}")
+
+                eligible_users.append({
+                    "name": user_name,
+                    "weight": weight
+                })
+
+    if not eligible_users:
+        return "😔 Пока нет участников, выполнивших все условия конкурса."
+
+    for user in eligible_users:
+        user['chance'] = (user['weight'] / total_weight) * 100
+
+    eligible_users.sort(key=itemgetter("chance"), reverse=True)
+
+    text_lines = ["🏆 Рейтинг участников розыгрыша:\n"]
+
+    for i, user in enumerate(eligible_users, start=1):
+        chance_str = f"{user['chance']:.2f}%"
+        text_lines.append(f"{i}. {user['name']} — {chance_str}")
+
+    return "\n".join(text_lines)
