@@ -12,10 +12,13 @@ from decorators.private_only import private_only
 from decorators.sync_username import sync_username
 from keyboards.back_to_menu import get_back_inline_keyboard
 from keyboards.schedule_keyboards import get_professor_week_days_keyboard
+from keyboards.professor import get_select_professor_keyboard
 from services.professor_schedule_service import (
     fetch_professor_schedule_for_day,
     format_professor_schedule_day,
     sanitize_professor_slug,
+    is_full_slug,
+    get_available_professors,
 )
 from states.schedule import ScheduleState
 from utils.database import get_user_info, update_last_professor_fio
@@ -25,7 +28,7 @@ router = Router()
 tz_moscow = pytz.timezone("Europe/Moscow")
 
 _PROFESSOR_FIO_PROMPT = (
-    "👨‍🏫 Введите <b>ФИО преподавателя</b> так, как оно указано в расписании "
+    "👨‍🏫 Введите <b>фамилию преподавателя</b> или ФИО полностью"
     "(например <code>Иванов И.И</code>)."
 )
 
@@ -267,6 +270,24 @@ async def professor_schedule_receive_name(message: types.Message, state: FSMCont
         )
         return
 
+    if not is_full_slug(slug):
+        professors_response = await get_available_professors(slug)
+        professors_list = professors_response.get('data', [])
+
+        if not professors_list:
+            await message.answer(
+                f"Преподаватель по запросу «{raw}» не найден.\nПопробуйте ввести фамилию заново.",
+                reply_markup=_professor_error_reply_markup("not_found")
+            )
+            return
+
+        await message.answer(
+            "Выберите нужного преподавателя из списка ниже:",
+            reply_markup = get_select_professor_keyboard(professors_list),
+        )
+        await state.set_state(ScheduleState.select_professor_name)
+        return
+
     today = datetime.now(tz=tz_moscow)
     day, month = today.day, today.month
 
@@ -301,6 +322,50 @@ async def professor_schedule_receive_name(message: types.Message, state: FSMCont
     )
     write_user_log(
         f"Пользователь {message.from_user.full_name} ({message.from_user.id}) "
+        f"запросил расписание преподавателя '{slug}' на сегодня"
+    )
+
+
+@router.callback_query(ScheduleState.select_professor_name, F.data.startswith("professor_select_"))
+@sync_username
+async def select_professor_name_input(callback: types.CallbackQuery, state: FSMContext):
+    selected_professor = callback.data.split("_")[2]
+    slug = sanitize_professor_slug(selected_professor)
+
+    today = datetime.now(tz=tz_moscow)
+    day, month = today.day, today.month
+
+    error_key, lessons = await fetch_professor_schedule_for_day(slug, day, month)
+
+    if error_key:
+        await state.clear()
+        msg = _ERR_MESSAGES.get(error_key, _ERR_MESSAGES["http_error"])
+        await callback.message.answer(
+            msg,
+            reply_markup=_professor_error_reply_markup(error_key),
+        )
+        write_user_log(
+            f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}): "
+            f"расписание преподавателя '{slug}' — ошибка {error_key}"
+        )
+        return
+
+    await state.set_state(ScheduleState.viewing_professor_schedule)
+    await state.update_data(professor_slug=slug, professor_display=selected_professor)
+
+    update_last_professor_fio(callback.from_user.id, selected_professor)
+
+    body = format_professor_schedule_day(lessons, day, month, selected_professor)
+    await callback.message.edit_text(
+        body,
+        parse_mode="HTML",
+        reply_markup=get_professor_week_days_keyboard(
+            start_date=today,
+            selected_date=today,
+        ),
+    )
+    write_user_log(
+        f"Пользователь {callback.from_user.full_name} ({callback.from_user.id}) "
         f"запросил расписание преподавателя '{slug}' на сегодня"
     )
 
