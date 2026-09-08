@@ -6,7 +6,7 @@ def get_start_inline_keyboard(
         is_bot_admin: bool = False
 ) -> InlineKeyboardMarkup:
     keyboard = [
-        [InlineKeyboardButton(text="🔥 Конкурс на Telegram Premium", callback_data="contest", style="primary")],
+        [InlineKeyboardButton(text="🎁 Розыгрыш Telegram Premium", callback_data="contest", style="primary")],
         [InlineKeyboardButton(text="📅 Расписание", callback_data="schedule")],
         [InlineKeyboardButton(text="👨‍🏫 Расписание преподавателя", callback_data="professor_schedule_open")],
         [InlineKeyboardButton(text="👤 Профиль", callback_data="info")],
@@ -19,6 +19,9 @@ def get_start_inline_keyboard(
         keyboard.insert(-1, [InlineKeyboardButton(text="🛠 Панель группы", callback_data="panel")])
 
     if is_bot_admin:
-        keyboard.insert(-1, [InlineKeyboardButton(text="👑 Панель админа", callback_data="admin_panel")]) #🖥
+        keyboard.insert(-1, [InlineKeyboardButton(text="👑 Панель админа", callback_data="admin_panel")])
+
+    if is_bot_admin:
+        keyboard.insert(-1, [InlineKeyboardButton(text="🎲 Панель розыгрыша", callback_data="contest-panel")])
 
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
