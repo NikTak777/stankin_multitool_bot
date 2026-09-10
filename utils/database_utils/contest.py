@@ -22,3 +22,21 @@ def get_active_days_count(user_id: int, start_date: datetime, end_date: datetime
 
         result = cur.fetchone()
         return result[0] if result else 0
+
+
+def get_winner_contest(activity: str = "contest") -> int:
+    """Возвращает id последнего пользователя, кто получил выигрышную активность."""
+    with get_db_connection() as con:
+        cur = con.cursor()
+
+        cur.execute("""
+            SELECT user_id
+            FROM user_activity
+            WHERE event = %s
+            ORDER BY ts DESC
+            LIMIT 1
+            
+        """, (activity,))
+
+        result = cur.fetchone()
+        return result[0] if result else 0
