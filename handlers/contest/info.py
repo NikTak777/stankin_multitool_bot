@@ -1,12 +1,12 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
-from keyboards.back_to_menu import get_back_inline_keyboard
+from keyboards.contest import get_contest_info_keyboard
 
 from services.contest import check_conditions
 
-from utils.database_utils.friends import get_friends_info
-from utils.time import get_now_time
+from utils.user_utils import get_user_name
+from utils.logger import write_user_log
 
 
 info_router = Router()
@@ -15,14 +15,16 @@ info_router = Router()
 @info_router.callback_query(F.data == "contest")
 async def send_contest_info(callback: CallbackQuery):
     user = callback.from_user
-
-    now = get_now_time()
+    user_name = await get_user_name(user)
 
     await callback.message.edit_text(
         text=(
-            f"Привет, {user.full_name}\n\n{check_conditions(user.id)}"
+            f"Привет, {user_name}!\n\n{check_conditions(user.id)}"
         ),
-        reply_markup=get_back_inline_keyboard("start"),
-        parse_mode="HTML"
+        parse_mode="HTML",
+        reply_markup=get_contest_info_keyboard(),
     )
+
+    write_user_log(f"Пользователь {user.full_name} ({user.id}) {user.username} открыл страницу розыгрыша")
+
     await callback.answer()
