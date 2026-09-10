@@ -6,6 +6,7 @@ from utils.database_utils.friends import get_list_friends
 from utils.database_utils.contest import get_active_days_count
 from utils.time import format_str_to_datetime, get_now_time
 from utils.database import get_user_info, get_all_user_ids
+from utils.database_utils.database_statistic import log_user_activity
 
 START_DATE = format_str_to_datetime("18-09-2026")
 END_DATE = format_str_to_datetime("28-09-2026")
@@ -171,8 +172,9 @@ def start_raffle() -> int:
                 active_users.append(user_id)
                 weight_users.append(get_user_weight(count_active_friends, count_inactive_friends))
 
-    win_user_id: list[int] = choices(active_users, weights=weight_users, k=1)
-    return win_user_id[0]
+    win_user_id: int = (choices(active_users, weights=weight_users, k=1))[0]
+    log_user_activity(win_user_id, "contest_1")
+    return win_user_id
 
 
 def get_all_contest_stats() -> str:
