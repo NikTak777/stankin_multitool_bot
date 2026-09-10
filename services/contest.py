@@ -3,7 +3,7 @@ from random import choices
 from operator import itemgetter
 
 from utils.database_utils.friends import get_list_friends
-from utils.database_utils.contest import get_active_days_count
+from utils.database_utils.contest import get_active_days_count, get_winner_contest
 from utils.time import format_str_to_datetime, get_now_time
 from utils.database import get_user_info, get_all_user_ids
 from utils.database_utils.database_statistic import log_user_activity
@@ -36,8 +36,10 @@ def check_conditions(user_id: int) -> str:
         hours = (total_seconds % 86400) // 3600
         minutes = (total_seconds % 3600) // 60
         if days > 0:
-            return f"До начала конкурса осталось: {days} дн. {hours} ч. {minutes} мин."
-        return f"До начала конкурса осталось: {hours} ч. {minutes} мин."
+            return f"До начала розыгрыша осталось: {days} дн. {hours} ч. {minutes} мин."
+        if hours > 0:
+            return f"До начала розыгрыша осталось: {hours} ч. {minutes} мин."
+        return f"До начала розыгрыша осталось: {minutes} мин."
 
     # 2. Проверка, закончился ли период конкурса
     if now > END_DATE:
@@ -46,19 +48,39 @@ def check_conditions(user_id: int) -> str:
         days = delta.days
         hours = (total_seconds % 86400) // 3600
         minutes = (total_seconds % 3600) // 60
+
         if days > 0:
-            return f"Конкурс закончился {days} дн. {hours} ч. {minutes} мин. назад"
-        return f"Конкурс закончился {hours} ч. {minutes} мин. назад"
+            time_ago: str = f"{days} дн. {hours} ч. {minutes} мин."
+        elif hours > 0:
+            time_ago: str = f"{hours} ч. {minutes} мин."
+        else:
+            time_ago: str = f"{minutes} мин."
+
+        user_id: int = get_winner_contest("contest-1")
+        if user_id:
+            user_info = get_user_info(user_id)
+            full_name = user_info['user_name']
+            user_name = user_info['user_tag']
+            masked_user_name = "@" + user_name[:-4] + "****" if len(user_name) > 4 else "@****"
+            if user_name:
+                return f"Розыгрыш закончился {time_ago} назад!\n<b>Победителем стал {full_name} ({masked_user_name})!</b>"
+            else:
+                return f"Розыгрыш закончился {time_ago} назад!\n<b>Победителем стал {full_name}!</b>"
+        else:
+            return f"Розыгрыш закончился {time_ago} назад!\n<b>Победитель будет известен чуть позже.</b>"
+
+    active_user_status: bool = False
+    active_friends_status: bool = False
 
     # 3. Проверка на три дня активности пользователя
-    info_msg = f"Вы пока не участвуете в розыгрыше:\n<b>условия конкурса ещё не выполнены!</b>\n\n"
-    info_msg += f"Выполнение условий розыгрыша:\n"
+    active_user_summary = f"Выполнение условий розыгрыша:\n"
 
     active_days = get_active_days_count(user_id, START_DATE, END_DATE)
     if active_days < ACTIVE_DAYS_COUNT:
-        info_msg += f"❌ Ваша активность: невыполнена ({active_days} из {ACTIVE_DAYS_COUNT} дн.)\n"
+        active_user_summary += f"❌ Ваша активность: невыполнена ({active_days} из {ACTIVE_DAYS_COUNT} дн.)\n"
     else:
-        info_msg += f"✅ Ваша активность: выполнена ({active_days} из {ACTIVE_DAYS_COUNT} дн.)\n"
+        active_user_summary += f"✅ Ваша активность: выполнена ({active_days} из {ACTIVE_DAYS_COUNT} дн.)\n"
+        active_user_status = True
 
     # 5. Список активности друзей
     friends: list[dict] = get_friends_activity(user_id)
@@ -67,7 +89,6 @@ def check_conditions(user_id: int) -> str:
     friends_list_text = "Сводка о ваших друзьях:\n"
     for friend in friends:
         friend_name: str = get_user_info(friend['friend_id'])['user_name']
-        count: int = friend['count']
         if friend['count'] >= 3:
             friends_list_text += f"⭐️ {friend_name}: активен ({friend['count']} из {ACTIVE_DAYS_COUNT} дн.)\n"
             count_active_friends += 1
@@ -76,17 +97,27 @@ def check_conditions(user_id: int) -> str:
             count_inactive_friends += 1
 
     if count_active_friends >= 3:
-        info_msg += f"✅ Активных друзей: выполнено ({count_active_friends} из {ACTIVE_DAYS_COUNT} чел.)\n\n"
+        active_friends_summary = f"✅ Активных друзей: выполнено ({count_active_friends} из {ACTIVE_DAYS_COUNT} чел.)\n\n"
+        active_friends_status = True
     else:
-        info_msg += f"❌ Активных друзей: невыполнено ({count_active_friends} из {ACTIVE_DAYS_COUNT} чел.)\n\n"
+        active_friends_summary = f"❌ Активных друзей: невыполнено ({count_active_friends} из {ACTIVE_DAYS_COUNT} чел.)\n\n"
 
-    info_msg += f"{friends_list_text}\n\n"
+    info_msg: str = ""
+    if active_user_status and active_friends_status:
+        participation_summary = f"Вы участвуете в розыгрыше: <b>все необходимые условия конкурса выполнены!</b>\n\nПродолжайте добавлять друзей, чтобы увеличить шанс выигрыша!\n\n"
+    else:
+        participation_summary = f"Вы пока не участвуете в розыгрыше:\n<b>условия конкурса ещё не выполнены!</b>\n\n"
+
+    info_msg += participation_summary
+    info_msg += active_user_summary
+    info_msg += active_friends_summary
+    info_msg += f"{friends_list_text}\n"
 
     win_weight: int = get_user_weight(count_active_friends, count_inactive_friends)
-    info_msg += f"Ваше количество очков: {win_weight}\n"
+    info_msg += f"⚡ Ваше количество очков: {win_weight}\n"
 
     win_chance, top_percent = get_contest_stats(win_weight)
-    info_msg += f"🎯 Текущая вероятность победы: {win_chance}%\n"
+    # info_msg += f"🎯 Текущая вероятность победы: {win_chance}%\n"
     info_msg += f"📈 Ваш статус: Вы входите в Топ-{top_percent}% участников с наивысшими шансами!\n"
 
     return info_msg
@@ -172,8 +203,11 @@ def start_raffle() -> int:
                 active_users.append(user_id)
                 weight_users.append(get_user_weight(count_active_friends, count_inactive_friends))
 
+    if not active_users:
+        return 0
+
     win_user_id: int = (choices(active_users, weights=weight_users, k=1))[0]
-    log_user_activity(win_user_id, "contest_1")
+    log_user_activity(win_user_id, "contest-1")
     return win_user_id
 
 
@@ -220,3 +254,7 @@ def get_all_contest_stats() -> str:
         text_lines.append(f"{i}. {user['name']} — {chance_str}")
 
     return "\n".join(text_lines)
+
+
+def is_contest_now():
+    return START_DATE <= get_now_time() <= END_DATE
