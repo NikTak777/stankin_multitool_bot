@@ -7,8 +7,8 @@ from utils.database_utils.contest import get_active_days_count
 from utils.time import format_str_to_datetime, get_now_time
 from utils.database import get_user_info, get_all_user_ids
 
-START_DATE = format_str_to_datetime("04-09-2026")
-END_DATE = format_str_to_datetime("13-09-2026")
+START_DATE = format_str_to_datetime("18-09-2026")
+END_DATE = format_str_to_datetime("28-09-2026")
 ACTIVE_DAYS_COUNT = 3
 
 """
