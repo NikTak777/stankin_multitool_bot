@@ -23,6 +23,7 @@ from services.professor_schedule_service import (
 from states.schedule import ScheduleState
 from utils.database import get_user_info, update_last_professor_fio
 from utils.logger import write_user_log
+from utils.database_utils.database_statistic import log_user_activity
 
 router = Router()
 tz_moscow = pytz.timezone("Europe/Moscow")
@@ -224,6 +225,7 @@ async def professor_schedule_open_from_menu(
             f"Пользователь {callback.from_user.full_name} ({uid}) открыл сохранённое "
             f"расписание преподавателя '{slug}'"
         )
+        log_user_activity(callback.from_user.id, "schedule")
         return
 
     await state.set_state(ScheduleState.entering_professor_name)
