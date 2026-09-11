@@ -38,7 +38,7 @@ async def get_select_name_group_keyboard(
     builder = InlineKeyboardBuilder()
     for group in groups['data']:
         builder.button(text=group, callback_data=f"group_name_{group}")
-    builder.adjust(3)
+    builder.adjust(2)
     builder.row(InlineKeyboardButton(text="❌ Отмена", callback_data=callback_target))
     return builder.as_markup()
 
