@@ -9,9 +9,9 @@ def get_admin_panel_keyboard() -> InlineKeyboardMarkup:
     """Создает клавиатуру для админ-панели"""
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="Главная", callback_data="admin_panel"),
-        InlineKeyboardButton(text="Активность", callback_data="activity_panel"),
-        InlineKeyboardButton(text="Используемость", callback_data="usability_panel"),
+        InlineKeyboardButton(text="📊 Главная", callback_data="admin_panel"),
+        InlineKeyboardButton(text="🏆 Активность", callback_data="activity_panel"),
+        InlineKeyboardButton(text="🗓️ Используемость", callback_data="usability_panel"),
     )
     builder.row(InlineKeyboardButton(
         text="⚙️ Управление тасками",
@@ -24,28 +24,29 @@ def get_admin_panel_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+TASK_ICONS = {
+    "daily_schedule": "📅",
+    "birthday_notifications": "🎂",
+    "new_year_greetings": "🎄",
+    "schedule_notifications": "⏰"
+}
+
+
 def get_admin_tasks_keyboard() -> InlineKeyboardMarkup:
     """Создает клавиатуру для управления тасками в админ-панели"""
     tasks_status = get_all_tasks_status()
-    
-    task_names = {
-        "daily_schedule": "📅",
-        "birthday_notifications": "🎂",
-        "new_year_greetings": "🎄",
-        "schedule_notifications": "⏰"
-    }
 
     builder = InlineKeyboardBuilder()
 
-    for task_key, task_display_name in task_names.items():
+    for task_key, task_icon in TASK_ICONS.items():
         status = tasks_status.get(task_key, True)
-        status_icon = "✅" if status else "❌"
 
-        status_text = "Вкл" if status else "Выкл"
+        color_button = "success" if status else "danger"
 
         builder.add(InlineKeyboardButton(
-            text=f"{status_icon} {task_display_name} {status_text}",
-            callback_data=f"toggle_task:{task_key}"
+            text=f"{task_icon}",
+            callback_data=f"toggle_task:{task_key}",
+            style=color_button,
         ))
 
     builder.adjust(4)
