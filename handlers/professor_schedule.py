@@ -270,6 +270,13 @@ async def professor_schedule_receive_name(message: types.Message, state: FSMCont
         )
         return
 
+    if len(slug) < 3:
+        await message.answer(
+            "Пожалуйста, введите больше букв или нажмите «Назад в меню».",
+            reply_markup=get_back_inline_keyboard("start"),
+        )
+        return
+
     if not is_full_slug(slug):
         professors_response = await get_available_professors(slug)
         professors_list = professors_response.get('data', [])
