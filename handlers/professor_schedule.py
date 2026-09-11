@@ -28,7 +28,7 @@ router = Router()
 tz_moscow = pytz.timezone("Europe/Moscow")
 
 _PROFESSOR_FIO_PROMPT = (
-    "👨‍🏫 Введите <b>фамилию преподавателя</b> или ФИО полностью"
+    "👨‍🏫 Введите <b>фамилию преподавателя</b> или ФИО полностью "
     "(например <code>Иванов И.И</code>)."
 )
 
@@ -270,6 +270,13 @@ async def professor_schedule_receive_name(message: types.Message, state: FSMCont
         )
         return
 
+    if len(slug) < 3:
+        await message.answer(
+            "Пожалуйста, введите больше букв или нажмите «Назад в меню».",
+            reply_markup=get_back_inline_keyboard("start"),
+        )
+        return
+
     if not is_full_slug(slug):
         professors_response = await get_available_professors(slug)
         professors_list = professors_response.get('data', [])
@@ -281,9 +288,20 @@ async def professor_schedule_receive_name(message: types.Message, state: FSMCont
             )
             return
 
+        text = "👨‍🏫 Выберите нужного преподавателя из списка ниже:"
+
+        if len(professors_list) > 25:
+            professors_list = professors_list[:25]
+            text += (
+                "\n\n<i>⚠️ Найдено слишком много совпадений (показаны первые 25). "
+                "Если нужного преподавателя нет в списке, попробуйте уточнить запрос "
+                "(например, добавьте инициалы).</i>"
+            )
+
         await message.answer(
-            "Выберите нужного преподавателя из списка ниже:",
-            reply_markup = get_select_professor_keyboard(professors_list),
+            text=text,
+            parse_mode="HTML",
+            reply_markup=get_select_professor_keyboard(professors_list),
         )
         await state.set_state(ScheduleState.select_professor_name)
         return
