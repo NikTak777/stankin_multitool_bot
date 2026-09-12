@@ -71,9 +71,16 @@ async def show_other_profile(message: types.Message, state: FSMContext):
         await message.answer("Тег должен содержать от 2 до 50 символов. Попробуйте еще раз.")
         return
 
-    other_id = get_id_from_username(other_user_name)[0]
+    other_id = get_id_from_username(other_user_name)
 
-    info = get_user_info(other_id)
+    if other_id == "not_found":
+        await message.answer(
+            text=other_user_not_found(other_user_name),
+            reply_markup=get_error_wishlist_keyboard()
+        )
+        write_user_log(f"Пользователь {message.from_user.full_name} ({user_id}) @{message.from_user.username} не смог получить профиль, @{other_user_name} не найден")
+
+    info = get_user_info(other_id[0])
 
     if other_user_name == user_name:
         msg_to_user = get_own_profile_info(info)
@@ -81,18 +88,12 @@ async def show_other_profile(message: types.Message, state: FSMContext):
             text=msg_to_user,
             reply_markup=get_error_wishlist_keyboard()
         )
-        write_user_log(f"Пользователь {message.from_user.full_name} ({user_id}) запросил свой же профиль")
-    elif info is None:
-        await message.answer(
-            text=other_user_not_found(other_user_name),
-            reply_markup=get_error_wishlist_keyboard()
-        )
-        write_user_log(f"Пользователь {message.from_user.full_name} ({user_id}) не смог получить профиль, @{other_user_name} не найден")
+        write_user_log(f"Пользователь {message.from_user.full_name} ({user_id}) @{message.from_user.username} запросил свой же профиль")
     else:
         await message.answer(
             text=other_profile_info(info),
             reply_markup = get_error_wishlist_keyboard()
         )
-        write_user_log(f"Пользователь {message.from_user.full_name} ({user_id}) получил профиль @{other_user_name}")
+        write_user_log(f"Пользователь {message.from_user.full_name} ({user_id}) @{message.from_user.username} получил профиль @{other_user_name}")
 
     await state.clear()

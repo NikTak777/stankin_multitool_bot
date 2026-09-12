@@ -9,6 +9,7 @@ from handlers.friends import friends_menu, friends_request, friends_edit_menu, d
 from handlers.schedule_modules import other_group, friend
 from handlers.contest import contest_router
 from handlers.admin import admin_router
+from handlers.search_profile import search_router
 
 from utils.logger import write_user_log
 from utils import set_user_birthdate
@@ -52,6 +53,7 @@ dp.include_router(other_group.router)
 dp.include_router(friend.router)
 dp.include_router(contest_router)
 dp.include_router(admin_router)
+dp.include_router(search_router)
 
 
 async def main():
