@@ -17,6 +17,8 @@ from keyboards.friends_menu_keyboards import get_error_request_keyboard, get_req
 from keyboards.cancel_keyboard import get_cancel_inline_keyboard
 from keyboards.back_to_menu import get_back_inline_keyboard
 
+from services.friends import get_friend_request_text, FriendRequestStatus
+
 from bot import bot
 
 # Декораторы
@@ -39,7 +41,7 @@ async def process_friends_request(user, message_obj, state: FSMContext, is_callb
     full_name = user.full_name
     user_name = user.username or "StankinMultiToolBot"
 
-    msg_to_user = f"Пожалуйста, введите тег пользователя, кому вы хотите отправить приглашение в друзья.\nНапример, @{user_name}"
+    msg_to_user = f"Введите тег пользователя, кому вы хотите отправить приглашение в друзья.\nНапример, @{user_name}"
 
     if is_callback:
         await message_obj.edit_text(msg_to_user, reply_markup=get_cancel_inline_keyboard("friends_menu"))
@@ -55,86 +57,77 @@ async def process_friends_request(user, message_obj, state: FSMContext, is_callb
 @router.message(StateFilter("awaiting_friends"))
 @sync_username
 async def send_friend_request(message: Message, state: FSMContext):
+    search_username = message.text
     user_id = message.from_user.id
     user_name = message.from_user.username
     full_name = message.from_user.full_name
 
-    friend_tag = message.text.strip().lstrip("@")
-    if not (2 <= len(friend_tag) <= 50):
-        await message.answer("Тег должен содержать от 2 до 50 символов. Попробуйте еще раз.",
-                             reply_markup=get_cancel_inline_keyboard("friends_menu"))
-        write_user_log(f"Пользователь {full_name} ({user_id}) ввёл некорректный username")
-        return
+    status, msg_to_user, request_id, friend_id = get_friend_request_text(
+        search_username=search_username,
+        own_username=message.from_user.username,
+        own_user_id=user_id
+    )
 
-    if friend_tag == user_name:
-        await message.answer(
-            text="Себя нельзя добавить в друзья.",
-            reply_markup=get_error_request_keyboard()
-        )
-        write_user_log(f"Пользователь {full_name} ({user_id}) ввёл свой username")
-    elif not check_user_by_username(friend_tag):
-        await message.answer(
-            text="Пользователь не найден.",
-            reply_markup=get_error_request_keyboard()
-        )
-        write_user_log(f"Пользователь {full_name} ({user_id}) ввёл несуществующий username")
-    else:
-        friend_id = get_id_from_username(friend_tag)[0]
-
-        sender_name = get_user_info(user_id).get("user_name")
-        receive_name = get_user_info(friend_id).get("user_name")
-
-        if check_existing_friend(user_id, friend_id):
-            write_user_log(f"Пользователь {full_name} ({user_id}) уже является другом пользователя {receive_name} ({friend_id})")
-            await message.answer(
-                text=f"Вы уже являетесь друзьями с {receive_name}.",
-                reply_markup=get_error_request_keyboard()
-            )
-            return
-
-        # Проверяем, не отправлял ли уже запрос
-        existing_request = check_existing_request(user_id, friend_id)
-        if existing_request:
-            write_user_log(f"Пользователь {full_name} ({user_id}) отправил повторный запрос пользователю {receive_name} ({friend_id})")
-            await message.answer(
-                text=f"Вы уже отправили запрос пользователю {receive_name}.",
-                reply_markup=get_error_request_keyboard()
-            )
-            return
-
-        # Добавляем новый запрос
-        request_id = add_friend_request(user_id, friend_id)
-
+    if status == FriendRequestStatus.SUCCESS:
         try:
-            msg = f"Пользователь {sender_name} отправил Вам запрос в друзья!"
             await bot.send_message(
                 chat_id=friend_id,
-                text=msg,
+                text=f"Пользователь {full_name} @{user_name} отправил Вам запрос в друзья!",
                 reply_markup=get_request_keyboard(request_id)
             )
-
-            await message.answer(f"Ваш запрос пользователю {receive_name} был успешно отправлен!\n"
-                                 f"Вам придёт уведомление, когда будет ответ.",
-                                 reply_markup=get_back_inline_keyboard("friends_menu"))
-
-            write_user_log(f"Пользователь {full_name} ({user_id}) успешно отправил запрос пользователю {receive_name} {(friend_id)}")
-
-        except TelegramForbiddenError:
+            await message.answer(
+                text=msg_to_user,
+                reply_markup=get_cancel_inline_keyboard("friends_menu")
+            )
+            write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} "
+                           f"успешно отправил запрос пользователю {search_username} ({friend_id})")
+        except TelegramForbiddenError as e:
             delete_friend_request(request_id)
             await message.answer(
-                f"⚠️ Не удалось отправить запрос пользователю {receive_name}.\n"
-                f"Пользователь, возможно, заблокировал меня(",
+                f"⚠️ Не удалось отправить запрос пользователю {search_username}.\n"
+                f"Пользователь, возможно, заблокировал меня 😔",
                 reply_markup=get_error_request_keyboard()
             )
+            write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} "
+                           f"не смог отправить запрос пользователю {search_username} ({friend_id}). "
+                           f"Причина: Бот заблокирован ({e})")
         except Exception as e:
             delete_friend_request(request_id)
             await message.answer(
-                f"⚠️ Не удалось отправить запрос пользователю {receive_name}.\n"
+                f"⚠️ Не удалось отправить запрос пользователю {search_username}.\n"
                 f"Попробуйте в другой раз.",
                 reply_markup=get_error_request_keyboard()
             )
+            write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} "
+                           f"не смог отправить запрос пользователю {search_username} ({friend_id}). "
+                           f"Неизвестная ошибка: {e}")
+        await state.clear()
 
-    await state.clear()
+    elif status == FriendRequestStatus.INVALID:
+        await message.answer(
+            text=msg_to_user,
+            reply_markup=get_cancel_inline_keyboard("friends_menu")
+        )
+        write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} ввёл некорректный username {search_username}")
+
+    elif status in (FriendRequestStatus.SELF_ADD, FriendRequestStatus.NOT_FOUND,
+                  FriendRequestStatus.ALREADY_FRIENDS, FriendRequestStatus.REQUEST_EXISTS):
+        await message.answer(
+            text=msg_to_user,
+            reply_markup=get_error_request_keyboard()
+        )
+        if status == FriendRequestStatus.SELF_ADD:
+            write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} ввёл свой username")
+        elif status == FriendRequestStatus.NOT_FOUND:
+            write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} "
+                           f"ввёл несуществующий username {search_username}")
+        elif status == FriendRequestStatus.ALREADY_FRIENDS:
+            write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} "
+                           f"уже является другом пользователя {search_username} ({friend_id})")
+        else:
+            write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} "
+                           f"отправил повторный запрос пользователю {search_username} ({friend_id})")
+        await state.clear()
 
 
 @router.callback_query(F.data.startswith("accept_friend_request:"))
