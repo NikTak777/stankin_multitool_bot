@@ -28,29 +28,21 @@ router = Router()
 @router.callback_query(F.data == "friends_request")
 @ensure_user_in_db
 @sync_username
-async def callback_friends_request(callback: CallbackQuery, state: FSMContext):
-    await callback.answer()
-    await process_friends_request(callback.from_user, callback.message, state, is_callback=True)
+async def callback_friends_request(clb: CallbackQuery, state: FSMContext):
+    user_id = clb.from_user.id
+    full_name = clb.from_user.full_name
+    user_name = clb.from_user.username or "StankinMultiToolBot"
 
+    await clb.message.edit_text(
+        text=f"Введите тег пользователя, кому вы хотите отправить приглашение в друзья.\nНапример, @{user_name}",
+        reply_markup=get_cancel_inline_keyboard("friends_menu")
+    )
+    write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} начал ввод юзернейма пользователя для добавления в друзья")
 
-async def process_friends_request(user, message_obj, state: FSMContext, is_callback=False):
-    user_id = user.id
-    full_name = user.full_name
-    user_name = user.username or "StankinMultiToolBot"
-
-    msg_to_user = f"Введите тег пользователя, кому вы хотите отправить приглашение в друзья.\nНапример, @{user_name}"
-
-    if is_callback:
-        await message_obj.edit_text(msg_to_user, reply_markup=get_cancel_inline_keyboard("friends_menu"))
-    else:
-        await message_obj.answer(msg_to_user, reply_markup=get_cancel_inline_keyboard("friends_menu"))
-
-    write_user_log(f"Пользователь {full_name} ({user_id}) начал добавлять пользователя в друзья")
-
+    await clb.answer()
     await state.set_state("awaiting_friends")
 
 
-# Хэндлер, когда пользователь ввёл тег друга
 @router.message(StateFilter("awaiting_friends"))
 @sync_username
 async def send_friend_request(message: Message, state: FSMContext):
