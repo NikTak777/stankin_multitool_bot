@@ -6,18 +6,15 @@ from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramForbiddenError
 
 from utils.logger import write_user_log
-from utils.database import (get_user_info, get_id_from_username, check_user_by_username)
+from utils.database import (get_user_info)
 
-from utils.database_utils.friends import (add_friend_to_user, add_friend_request,
-                                          check_existing_request, update_friend_request_status,
-                                          get_friend_id_from_request_id, check_existing_friend,
-                                          delete_friend_request)
+from utils.database_utils.friends import (add_friend_to_user, update_friend_request_status,
+                                          get_friend_id_from_request_id, delete_friend_request)
 
 from keyboards.friends_menu_keyboards import get_error_request_keyboard, get_request_keyboard, get_accept_request_keyboard
 from keyboards.cancel_keyboard import get_cancel_inline_keyboard
-from keyboards.back_to_menu import get_back_inline_keyboard
 
-from services.friends import get_friend_request_text, FriendRequestStatus
+from services.friends.request import get_friend_request_text, FriendRequestStatus
 
 from bot import bot
 
