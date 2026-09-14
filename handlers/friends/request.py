@@ -16,7 +16,7 @@ from keyboards.cancel_keyboard import get_cancel_inline_keyboard
 
 from services.friends.request import (
     get_friend_request_text,
-    get_friend_request_accept_text,
+    process_friend_request_action,
     FriendRequestStatus
 )
 
@@ -128,61 +128,61 @@ async def handle_friend_request_accept(callback: CallbackQuery):
     receiver_id = callback.from_user.id
     request_id = int(callback.data.split(":")[1])
 
-    (
-        receiver_req_text,
-        sender_req_text,
-        log_text,
-        sender_id
-
-    ) = get_friend_request_accept_text(
+    result = process_friend_request_action(
         receiver_id=receiver_id,
-        request_id=request_id
+        request_id=request_id,
+        is_accepted=True
     )
 
     await callback.message.edit_text(
-        text=receiver_req_text,
+        text=result.receiver_req_text,
         reply_markup=get_accept_request_keyboard()
     )
     await callback.answer()
-    write_user_log(log_text)
+    write_user_log(result.log_text)
 
     try:
         await bot.send_message(
-            chat_id=sender_id,
-            text=sender_req_text,
+            chat_id=result.sender_id,
+            text=result.sender_req_text,
             reply_markup=get_accept_request_keyboard())
 
     except TelegramForbiddenError:
         write_user_log(f"Не удалось доставить уведомление пользователю "
-                       f"{sender_id}: бот заблокирован")
+                       f"{result.sender_id}: бот заблокирован")
     except Exception as e:
         write_user_log(f"Не удалось доставить уведомление пользователю "
-                       f"{sender_id}: {e}")
+                       f"{result.sender_id}: {e}")
 
 
 @request_router.callback_query(F.data.startswith("decline_friend_request:"))
 @sync_username
 async def handle_friend_request_decline(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    request_id = get_request_id_from_callback(callback)
+    receiver_id = callback.from_user.id
+    request_id = int(callback.data.split(":")[1])
 
-    update_friend_request_status(request_id, "declined")
+    result = process_friend_request_action(
+        receiver_id=receiver_id,
+        request_id=request_id,
+        is_accepted=False
+    )
 
-    friend_id = get_friend_id_from_request_id(request_id)
-
-    receive_name = get_user_info(user_id).get("user_name")
-    sender_name = get_user_info(friend_id).get("user_name")
-
-    await callback.message.edit_text(f"Вы отклонили запрос пользователя {sender_name}!",
-                                     reply_markup=get_accept_request_keyboard())
+    await callback.message.edit_text(
+        text=result.receiver_req_text,
+        reply_markup=get_accept_request_keyboard()
+    )
     await callback.answer()
+    write_user_log(result.log_text)
 
-    text = f"Пользователь {receive_name} отклонил Ваш запрос в друзья!"
-    await bot.send_message(chat_id=friend_id, text=text)
+    try:
+        await bot.send_message(
+            chat_id=result.sender_id,
+            text=result.sender_req_text,
+            reply_markup=get_accept_request_keyboard())
 
-    write_user_log(
-        f"Пользователь {receive_name} ({user_id}) отклонил запрос пользователя {sender_name} ({friend_id})")
-
-
-def get_request_id_from_callback(callback: CallbackQuery) -> int:
-    return int(callback.data.split(":")[1])  # "accept_friend_request:123" -> 123
+    except TelegramForbiddenError:
+        write_user_log(f"Не удалось доставить уведомление пользователю "
+                       f"{result.sender_id}: бот заблокирован")
+    except Exception as e:
+        write_user_log(f"Не удалось доставить уведомление пользователю "
+                       f"{result.sender_id}: {e}")
