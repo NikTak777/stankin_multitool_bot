@@ -6,11 +6,19 @@ def get_recommend_profiles(
         exact_flow: str,
         direction: str,
         year: str,
-        limit: int = 5
+        limit: int = 5,
+        exclude_ids: list[int] | None = None,
 ) -> list[tuple]:
     """
     Ищет профили, сортируя их по степени релевантности группы (поток -> направление/год -> случайные).
+    Пропускает список профилей из exclude_ids.
     """
+    if exclude_ids is None:
+        exclude_ids = []
+
+    exclude_ids.append(user_id)
+    exclude_tuple = tuple(set(exclude_ids))
+
     with get_db_connection() as con:
         cur = con.cursor()
 
@@ -21,7 +29,7 @@ def get_recommend_profiles(
         cur.execute("""
             SELECT user_tag, user_name, user_group
             FROM users
-            WHERE user_id != %s 
+            WHERE user_id NOT IN %s 
               AND user_tag IS NOT NULL
             ORDER BY 
                 CASE 
@@ -32,6 +40,6 @@ def get_recommend_profiles(
                 END ASC,
                 RANDOM()
             LIMIT %s
-        """, (user_id, mask_exact, mask_dir, mask_year, limit))
+        """, (exclude_tuple, mask_exact, mask_dir, mask_year, limit))
 
         return cur.fetchall()
