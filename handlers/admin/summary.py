@@ -1,15 +1,22 @@
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
+from aiogram.exceptions import TelegramForbiddenError
 
 from services.admin import get_summary_panel
 from keyboards.admin_panel import get_admin_panel_keyboard, get_admin_tasks_keyboard
 from utils.logger import write_user_log
+from decorators.admin_only import admin_only
+from decorators.sync_username import sync_username
+from decorators.private_only import private_only
 
 summary_router = Router()
 
 
-@summary_router.message(Command("admin_panel"))
+@summary_router.message(Command("admin"))
+@admin_only
+@sync_username
+@private_only
 async def admin_panel_command(message: Message):
     await message.answer(
         text=get_summary_panel(user_id=message.from_user.id),
@@ -19,10 +26,21 @@ async def admin_panel_command(message: Message):
 
 
 @summary_router.callback_query(F.data == "admin_panel")
+@admin_only
+@sync_username
+@private_only
 async def admin_panel_callback(callback: CallbackQuery):
-    await callback.message.edit_text(
-        text=get_summary_panel(user_id=callback.from_user.id),
-        reply_markup=get_admin_panel_keyboard()
-    )
-    await callback.answer()
-    write_user_log(f"Админ {callback.from_user.full_name} ({callback.from_user.id}) @{callback.from_user.username} открыл панель админа")
+    try:
+        await callback.message.edit_text(
+            text=get_summary_panel(user_id=callback.from_user.id),
+            reply_markup=get_admin_panel_keyboard()
+        )
+        await callback.answer()
+        write_user_log(f"Админ {callback.from_user.full_name} ({callback.from_user.id}) "
+                       f"@{callback.from_user.username} открыл панель админа"
+        )
+    except TelegramForbiddenError:
+        write_user_log(
+            f"Ошибка вывода панели админа у админа {callback.from_user.full_name} "
+            f"({callback.from_user.id}) @{callback.from_user.username}. Сообщение не обновлено."
+        )
