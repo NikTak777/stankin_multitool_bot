@@ -1,4 +1,5 @@
 from enum import Enum
+from dataclasses import dataclass
 
 from utils.database import (
     get_user_info,
@@ -83,44 +84,65 @@ def get_friend_request_text(
         friend_id
     )
 
+@dataclass(slots=True)
+class FriendRequestResult():
+    receiver_req_text: str
+    sender_req_text: str
+    log_text: str
+    sender_id: int
+    is_accepted: bool
 
-def get_friend_request_accept_text(
+
+def process_friend_request_action(
         receiver_id: int,
-        request_id: int
-) -> tuple[str, str, str, int]:
+        request_id: int,
+        is_accepted: bool
+) -> FriendRequestResult:
     """
     params:
         receiver_id - id пользователя, получившего приглашение
         request_id - id приглашения из кнопки
+        is_accepted - принято приглашение или нет (отклонено)
     returns:
-        receiver_req_text - текст сообщения пользователю, получившего приглашение
-        sender_req_text - текст сообщения пользователю, отправившего приглашение
-        log_text - текст для логирования
-        sender_id - id пользователя, отправившего приглашение
+        FriendRequestResult(
+            receiver_req_text - текст сообщения пользователю, получившего приглашение
+            sender_req_text - текст сообщения пользователю, отправившего приглашение
+            log_text - текст для логирования
+            sender_id - id пользователя, отправившего приглашение
+            is_accepted - принято приглашение или нет (отклонено)
+        )
     """
-    update_friend_request_status(request_id, "accepted")
-
     sender_id = get_friend_id_from_request_id(request_id)
-
-    add_friend_to_user(receiver_id, sender_id)
-    add_friend_to_user(sender_id, receiver_id)
+    sender_info = get_user_info(sender_id)
+    sender_fullname, sender_username = sender_info["user_name"], sender_info["user_tag"]
 
     receiver_info = get_user_info(receiver_id)
     receiver_fullname, receiver_username = receiver_info["user_name"], receiver_info["user_tag"]
 
-    sender_info = get_user_info(sender_id)
-    sender_fullname, sender_username = sender_info["user_name"], sender_info["user_tag"]
+    if is_accepted:
+        update_friend_request_status(request_id, "accepted")
+        add_friend_to_user(receiver_id, sender_id)
+        add_friend_to_user(sender_id, receiver_id)
 
-    receiver_req_text = f"Вы стали друзьями c пользователем {sender_fullname} @{sender_username}!"
-    sender_req_text = f"Пользователь {receiver_fullname} @{receiver_username} принял Ваш запрос в друзья!"
-    log_text = (f"Пользователь {receiver_fullname} ({receiver_id}) @{receiver_username} "
-                f"принял запрос пользователя {sender_fullname} ({sender_id}) @{sender_username}")
+        receiver_req_text = f"Вы стали друзьями c пользователем {sender_fullname} @{sender_username}!"
+        sender_req_text = f"Пользователь {receiver_fullname} @{receiver_username} принял Ваш запрос в друзья!"
+        log_text = (f"Пользователь {receiver_fullname} ({receiver_id}) @{receiver_username} "
+                    f"принял запрос пользователя {sender_fullname} ({sender_id}) @{sender_username}")
+    else:
+        update_friend_request_status(request_id, "declined")
 
-    return (
-        receiver_req_text,
-        sender_req_text,
-        log_text,
-        sender_id
+        receiver_req_text = f"Вы отклонили запрос пользователя {sender_fullname} @{sender_username}!"
+        sender_req_text = f"Пользователь {receiver_fullname} @{receiver_username} отклонил Ваш запрос в друзья!"
+        log_text = (f"Пользователь {receiver_fullname} ({receiver_id}) @{receiver_username} "
+                    f"отклонил запрос пользователя {sender_fullname} ({sender_id}) @{sender_username}")
+
+
+    return FriendRequestResult(
+        receiver_req_text=receiver_req_text,
+        sender_req_text=sender_req_text,
+        log_text=log_text,
+        sender_id=sender_id,
+        is_accepted=is_accepted
     )
 
 
