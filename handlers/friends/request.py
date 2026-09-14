@@ -16,6 +16,7 @@ from keyboards.cancel_keyboard import get_cancel_inline_keyboard
 
 from services.friends.request import (
     get_friend_request_text,
+    create_friend_request,
     process_friend_request_action,
     FriendRequestStatus
 )
@@ -32,15 +33,14 @@ request_router = Router()
 @ensure_user_in_db
 @sync_username
 async def callback_friends_request(clb: CallbackQuery, state: FSMContext):
-    user_id = clb.from_user.id
-    full_name = clb.from_user.full_name
-    user_name = clb.from_user.username or "StankinMultiToolBot"
+    user = clb.from_user
+    msg_to_user, log_msg = get_friend_request_text(user)
 
     await clb.message.edit_text(
-        text=f"Введите тег пользователя, кому вы хотите отправить приглашение в друзья.\nНапример, @{user_name}",
+        text=msg_to_user,
         reply_markup=get_cancel_inline_keyboard("friends_menu")
     )
-    write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} начал ввод юзернейма пользователя для добавления в друзья")
+    write_user_log(log_msg)
 
     await clb.answer()
     await state.set_state("awaiting_friends")
@@ -54,7 +54,7 @@ async def send_friend_request(message: Message, state: FSMContext):
     user_name = message.from_user.username
     full_name = message.from_user.full_name
 
-    status, msg_to_user, request_id, friend_id = get_friend_request_text(
+    status, msg_to_user, request_id, friend_id = create_friend_request(
         search_username=search_username,
         own_username=message.from_user.username,
         own_user_id=user_id
