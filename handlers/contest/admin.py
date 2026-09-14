@@ -32,7 +32,7 @@ async def admin_contest_menu_command(message: Message):
         ),
         reply_markup=get_admin_contest_menu_keyboard()
     )
-    write_user_log(f"Админ {user.full_name} ({user.user_id}) @{user.username} ввёл команду /contest")
+    write_user_log(f"Админ {user.full_name} ({user.id}) @{user.username} ввёл команду /contest")
 
 
 @raffle_router.callback_query(F.data == "contest-panel")
@@ -49,7 +49,7 @@ async def admin_contest_menu_callback_query(callback: CallbackQuery):
         reply_markup=get_admin_contest_menu_keyboard()
     )
     await callback.answer()
-    write_user_log(f"Админ {user.full_name} ({user.user_id}) @{user.username} открыл панель администрирования розыгрышем")
+    write_user_log(f"Админ {user.full_name} ({user.id}) @{user.username} открыл панель администрирования розыгрыша")
 
 
 @raffle_router.callback_query(F.data == "start-raffle")
@@ -58,6 +58,18 @@ async def admin_contest_menu_callback_query(callback: CallbackQuery):
 async def start_contest_raffle_handler(callback: CallbackQuery):
     user = callback.from_user
     winner_id = start_raffle()
+
+    if not winner_id:
+        await callback.message.edit_text(
+            text=(
+                f"Победитель не был выбран, так как не было участников.\n\n"
+                f"{get_all_contest_stats()}"
+            ),
+            reply_markup=get_admin_contest_menu_keyboard()
+        )
+        write_user_log(f"Админ {user.full_name} ({user.id}) @{user.username} запустил розыгрыш. Победитель не был выбран, так как не было участников")
+        return
+
     winner_info = get_user_info(winner_id)
     winner_fullname, winner_username = winner_info["user_name"], winner_info["user_tag"]
     await callback.message.edit_text(
@@ -68,7 +80,7 @@ async def start_contest_raffle_handler(callback: CallbackQuery):
         reply_markup=get_back_inline_keyboard()
     )
     await callback.answer()
-    write_user_log(f"Админ {user.full_name} ({user.user_id}) @{user.username} запустил розыгрыш. Победителем стал пользователь {winner_fullname} ({winner_id}) @{winner_username}")
+    write_user_log(f"Админ {user.full_name} ({user.id}) @{user.username} запустил розыгрыш. Победителем стал пользователь {winner_fullname} ({winner_id}) @{winner_username}")
 
     try:
         await bot.send_message(
