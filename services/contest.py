@@ -104,9 +104,9 @@ def check_conditions(user_id: int) -> str:
 
     info_msg: str = ""
     if active_user_status and active_friends_status:
-        participation_summary = f"Вы участвуете в розыгрыше: <b>все необходимые условия конкурса выполнены!</b>\n\nПродолжайте добавлять друзей, чтобы увеличить шанс выигрыша!\n\n"
+        participation_summary = f"🥳 Вы участвуете в розыгрыше: <b>все необходимые условия конкурса выполнены!</b>\n\nПродолжайте добавлять друзей, чтобы увеличить шанс выигрыша!\n\n"
     else:
-        participation_summary = f"Вы пока не участвуете в розыгрыше:\n<b>условия конкурса ещё не выполнены!</b>\n\n"
+        participation_summary = f"😔 Вы пока не участвуете в розыгрыше:\n<b>условия конкурса ещё не выполнены!</b>\n\n"
 
     info_msg += participation_summary
     info_msg += active_user_summary
@@ -118,7 +118,8 @@ def check_conditions(user_id: int) -> str:
 
     win_chance, top_percent = get_contest_stats(win_weight)
     # info_msg += f"🎯 Текущая вероятность победы: {win_chance}%\n"
-    info_msg += f"📈 Ваш статус: Вы входите в Топ-{top_percent}% участников с наивысшими шансами!\n"
+    info_msg += f"📈 Ваш статус: Вы входите в Топ-{top_percent}% участников с наивысшими шансами!\n\n"
+    info_msg += get_left_time_context_text()
 
     return info_msg
 
@@ -258,3 +259,24 @@ def get_all_contest_stats() -> str:
 
 def is_contest_now():
     return START_DATE <= get_now_time() <= END_DATE
+
+
+def get_left_time_context_text() -> str:
+    now = get_now_time()
+
+    if now < END_DATE:
+        delta = END_DATE - now
+        total_seconds = int(delta.total_seconds())
+        days = delta.days
+        hours = (total_seconds % 86400) // 3600
+        minutes = (total_seconds % 3600) // 60
+
+        if days > 0:
+            time_ago: str = f"{days} дн. {hours} ч. {minutes} мин."
+        elif hours > 0:
+            time_ago: str = f"{hours} ч. {minutes} мин."
+        else:
+            time_ago: str = f"{minutes} мин."
+        return f"⏰ До завершения розыгрыша осталось всего {time_ago}!"
+    else:
+        return ""
