@@ -2,8 +2,8 @@ from aiogram import Router
 
 from .request import request_router
 
-friend_router = Router()
+friends_router = Router()
 
-friend_router.include_routers(
+friends_router.include_routers(
     request_router
 )
