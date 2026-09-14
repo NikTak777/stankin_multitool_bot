@@ -14,8 +14,41 @@ from utils.database_utils.friends import (
     update_friend_request_status,
     get_friend_id_from_request_id,
     check_existing_friend,
-    delete_friend_request
+    get_list_friends
 )
+
+from services.search_profile import _parse_group, get_recommend_profiles
+
+
+def get_friend_request_text(user) -> tuple[str, str]:
+    user_name = user.username or "StankinMultiToolBot"
+    msg_to_user = f"Введите тег пользователя, кому вы хотите отправить приглашение в друзья.\nНапример, @{user_name}\n\n"
+
+    user_info = get_user_info(user.id)
+    full_group = user_info.get('user_group') if user_info else ""
+
+    exact_flow, direction, year = _parse_group(full_group)
+
+    friends_ids = get_list_friends(user.id)
+
+    recommended_users = get_recommend_profiles(
+        user_id=user.id,
+        exact_flow=exact_flow,
+        direction=direction,
+        year=year,
+        exclude_ids=friends_ids
+    )
+
+    if recommended_users:
+        msg_to_user += "👥 Рекомендации в друзья:\n"
+        for row in recommended_users:
+            tag = row[0]
+            name = row[1]
+            group = row[2] or "без группы"
+            msg_to_user += f"• {name} (@{tag}, {group})\n"
+
+    log_msg = f"Пользователь {user.full_name} ({user.id}) @{user.username} начал ввод юзернейма пользователя для добавления в друзья"
+    return msg_to_user, log_msg
 
 
 class FriendRequestStatus(Enum):
@@ -33,7 +66,7 @@ SELF_ADD_TEXT = "❌ Себя нельзя добавить в друзья."
 NOT_FOUND_TEXT = "❌ Пользователь не найден.\n\nВозможно, он ещё не пользовался ботом или делал это очень давно."
 
 
-def get_friend_request_text(
+def create_friend_request(
         search_username: str,
         own_username: str,
         own_user_id: int
