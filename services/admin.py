@@ -6,7 +6,7 @@ from utils.database_utils.task_management import toggle_task, get_task_status
 def get_summary_panel(user_id: int) -> str:
     full_name = get_real_user_name(user_id)
 
-    # Получаем топ-10 последних пользователей
+    # Получаем топ-15 последних пользователей
     last_users = get_last_active_users(15)
     last_users_text = "\n".join([
         f"{i + 1}. {u['user_name']} @{u['user_tag']}"
@@ -18,7 +18,9 @@ def get_summary_panel(user_id: int) -> str:
         "Это панель управления ботом.\n\n"
         f"👥 Количество пользователей: {get_users_count()}\n"
         f"👥 Количество новых пользователей за неделю: {count_new_users(7)}\n"
+        f"👥 Количество уникальных пользователей за месяц: {count_active_users(30)}\n"
         f"👥 Количество уникальных пользователей за неделю: {count_active_users(7)}\n"
+        f"👥 Количество уникальных пользователей за сутки: {count_active_users(1)}\n"
         f"👥 Последние активные пользователи:\n{last_users_text}\n\n"
     )
 
