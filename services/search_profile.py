@@ -76,7 +76,7 @@ def get_invalid_username_text() -> str:
 
 
 def get_user_not_found_text(user_name: str) -> str:
-    return f"❌ Пользователь с тегом @{user_name} не найден.\n\nВозможно он ещё не пользовался ботом или делал это очень давно."
+    return f"❌ Пользователь с тегом @{user_name} не найден.\n\nВозможно, он ещё не пользовался ботом или делал это очень давно."
 
 
 def _parse_group(full_group: str) -> tuple[str, str, str]:
