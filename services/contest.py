@@ -8,6 +8,8 @@ from utils.time import format_str_to_datetime, get_now_time
 from utils.database import get_user_info, get_all_user_ids
 from utils.database_utils.database_statistic import log_user_activity
 
+from config import ADMIN_ID
+
 START_DATE = format_str_to_datetime("18-09-2026")
 END_DATE = format_str_to_datetime("28-09-2026")
 ACTIVE_DAYS_COUNT = 3
@@ -116,7 +118,7 @@ def check_conditions(user_id: int) -> str:
     win_weight: int = get_user_weight(count_active_friends, count_inactive_friends)
     info_msg += f"⚡ Ваше количество очков: {win_weight}\n"
 
-    win_chance, top_percent = get_contest_stats(win_weight)
+    win_chance, top_percent = get_contest_stats(win_weight, user_id)
     # info_msg += f"🎯 Текущая вероятность победы: {win_chance}%\n"
     info_msg += f"📈 Ваш статус: Вы входите в Топ-{top_percent}% участников с наивысшими шансами!\n\n"
     info_msg += get_left_time_context_text()
@@ -145,12 +147,12 @@ def get_friends_activity(user_id: int) -> list[dict]:
     return sorted(activity, key=itemgetter("count"), reverse=True)
 
 
-def get_contest_stats(user_weight: int) -> tuple[float, int]:
+def get_contest_stats(user_weight: int, target_user_id: int) -> tuple[float, int]:
     all_eligible_weights: list[int] = []
     users_list: list[int] = get_all_user_ids()
 
     for user_id in users_list:
-        if get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
+        if user_id != ADMIN_ID and get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
             friends: list[dict] = get_friends_activity(user_id)
             count_active_friends: int = 0
             count_inactive_friends: int = 0
@@ -165,12 +167,17 @@ def get_contest_stats(user_weight: int) -> tuple[float, int]:
                 all_eligible_weights.append(weight)
 
     total_weight = sum(all_eligible_weights)
+    total_eligible = len(all_eligible_weights)
+
+    if target_user_id == ADMIN_ID and user_weight > 0:
+        total_weight += user_weight
+        total_eligible += 1
+
     if total_weight == 0:
         return 0.0, 100
 
     win_chance = (user_weight / total_weight) * 100
 
-    total_eligible = len(all_eligible_weights)
     better_users = sum(1 for w in all_eligible_weights if w > user_weight)
 
     top_percent = int((better_users / total_eligible) * 100)
@@ -191,7 +198,7 @@ def start_raffle() -> int:
     weight_users: list[int] = []
 
     for user_id in all_users:
-        if get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
+        if user_id != ADMIN_ID and get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
             friends: list[dict] = get_friends_activity(user_id)
             count_active_friends: int = 0
             count_inactive_friends: int = 0
@@ -218,7 +225,7 @@ def get_all_contest_stats() -> str:
     total_weight: int = 0
 
     for user_id in all_users:
-        if get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
+        if user_id != ADMIN_ID and get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
             friends: list[dict] = get_friends_activity(user_id)
             count_active_friends: int = 0
             count_inactive_friends: int = 0
