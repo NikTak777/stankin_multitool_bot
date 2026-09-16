@@ -86,3 +86,16 @@ def get_wishlist_suggestion_keyboard(suggestion_id: int) -> InlineKeyboardMarkup
         InlineKeyboardButton(text="❌ Отклонить", callback_data=f"decline_wishlist_suggestion:{suggestion_id}"),
     )
     return b.as_markup()
+
+
+def get_friend_profile_keyboard(friend_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(
+        text="🎁 Предложить вишлист",
+        callback_data=f"suggest_wishlist:{friend_id}"
+    ))
+    builder.row(InlineKeyboardButton(
+        text="⬅️ Назад",
+        callback_data="friends_edit_menu"
+    ))
+    return builder.as_markup()
