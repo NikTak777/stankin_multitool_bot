@@ -175,7 +175,7 @@ def get_all_user_ids():
         cur.execute("SELECT user_id FROM users")
         users = cur.fetchall()
 
-        return [str(user[0]) for user in users]
+        return [int(user[0]) for user in users]
 
 
 def get_user_wishlist(user_tag):

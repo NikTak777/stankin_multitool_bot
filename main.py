@@ -2,9 +2,9 @@ from bot import bot, dp
 import asyncio
 
 from handlers import (start_menu, info, birthdate, group_registration, group_panel, edit_profile,
-                      other_profile, user_wishlist, user_group, schedule, professor_schedule, help,
+                      user_wishlist, user_group, schedule, professor_schedule, help,
                       user_nickname, update, statistics)
-from handlers.friends import friends_menu, friends_edit_menu, delete_friend, friend_profile, wishlist_suggestion
+from handlers.friends import friends_menu, friends_edit_menu, wishlist_suggestion
 
 from handlers.schedule_modules import other_group, friend
 from handlers.contest import contest_router
@@ -35,7 +35,6 @@ dp.include_router(set_user_birthdate.router)
 dp.include_router(group_registration.router)
 dp.include_router(group_panel.router)
 dp.include_router(edit_profile.router)
-dp.include_router(other_profile.router)
 dp.include_router(user_wishlist.router)
 dp.include_router(user_group.router)
 dp.include_router(professor_schedule.router)
@@ -46,8 +45,6 @@ dp.include_router(update.router)
 dp.include_router(statistics.router)
 dp.include_router(friends_menu.router)
 dp.include_router(friends_edit_menu.router)
-dp.include_router(delete_friend.router)
-dp.include_router(friend_profile.router)
 dp.include_router(wishlist_suggestion.router)
 dp.include_router(other_group.router)
 dp.include_router(friend.router)
