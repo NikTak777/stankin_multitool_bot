@@ -4,7 +4,7 @@ import asyncio
 from handlers import (start_menu, info, birthdate, group_registration, group_panel, edit_profile,
                       user_wishlist, user_group, schedule, professor_schedule, help,
                       user_nickname, update, statistics)
-from handlers.friends import friends_menu, friends_edit_menu, friend_profile, wishlist_suggestion
+from handlers.friends import friends_menu, friends_edit_menu, wishlist_suggestion
 
 from handlers.schedule_modules import other_group, friend
 from handlers.contest import contest_router
@@ -45,7 +45,6 @@ dp.include_router(update.router)
 dp.include_router(statistics.router)
 dp.include_router(friends_menu.router)
 dp.include_router(friends_edit_menu.router)
-dp.include_router(friend_profile.router)
 dp.include_router(wishlist_suggestion.router)
 dp.include_router(other_group.router)
 dp.include_router(friend.router)
