@@ -39,7 +39,7 @@ def delete_friend_service(user_id: int, index: int) -> FriendDeleteResult:
         return FriendDeleteResult(
             status="delete_last",
             index=0,
-            prefix_msg=f"🗑 Друг «{friend_name}» удалён.",
+            prefix_msg=f"🗑 Друг «{friend_name}» удалён.\n\n",
             alert=f"🗑 Удалён «{friend_name}»",
             friend_name=friend_name,
             friend_id=friend_id
@@ -51,7 +51,7 @@ def delete_friend_service(user_id: int, index: int) -> FriendDeleteResult:
     return FriendDeleteResult(
         status="success",
         index=index,
-        prefix_msg=f"🗑 Друг «{friend_name}» удалён.",
+        prefix_msg=f"🗑 Друг «{friend_name}» удалён.\n\n",
         alert=f"🗑 Удалён «{friend_name}»",
         friend_name=friend_name,
         friend_id=friend_id

@@ -26,29 +26,22 @@ async def callback_delete_friends(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     idx = int(data.get("current_index", 0))
 
-    (
-        status,
-        index,
-        prefix_msg,
-        alert,
-        friend_name,
-        friend_id
-    ) = delete_friend_service(user_id, idx)
+    result = delete_friend_service(user_id, idx)
 
     await update_friends_view(
         callback=callback,
         state=state,
-        prefix=prefix_msg
+        prefix=result.prefix_msg
     )
-    await state.update_data(current_index=index)
-    await callback.answer(text=alert)
+    await state.update_data(current_index=result.index)
+    await callback.answer(text=result.alert)
 
-    if status == "not_found":
+    if result.status == "not_found":
         write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} "
                        f"не смог удалить друга, список друзей пуст")
-    elif status == "delete_last":
+    elif result.status == "delete_last":
         write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} "
-                       f"удалил из друзей пользователя {friend_name} ({friend_id}), список друзей пуст")
+                       f"удалил из друзей пользователя {result.friend_name} ({result.friend_id}), список друзей пуст")
     else:
         write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} "
-                       f"удалил из друзей пользователя {friend_name} ({friend_id})")
+                       f"удалил из друзей пользователя {result.friend_name} ({result.friend_id})")
