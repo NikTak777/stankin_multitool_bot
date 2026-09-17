@@ -1,23 +1,9 @@
-from dataclasses import dataclass
-
 from utils.database import get_user_info
 from utils.date_utils import format_date
 
 
-@dataclass(slots=True)
-class ProfileInfoResult:
-    msg_to_user: str
-
-
-
-def get_profile_info_service(user_id: int) -> ProfileInfoResult:
-
-    return ProfileInfoResult(
-        msg_to_user=get_profile_info_text(user_id)
-    )
-
 def get_profile_info_text(user_id: int) -> str:
-    user_info = get_user_info(user_id) or {}
+    user_info = get_user_info(user_id)
 
     day = user_info.get("user_day")
     month = user_info.get("user_month")
@@ -42,7 +28,7 @@ def get_profile_info_text(user_id: int) -> str:
     schedule_status = "Вкл." if schedule_notifications else "Выкл."
 
     text = (
-        f"📌 Информация о вашем аккаунте:\n\n"
+        f"📌 Информация о Вашем аккаунте:\n\n"
         f"👤 Имя пользователя: {full_name} {user_name}\n"
         f"🏷 Никнейм: {nick_name}\n"
         f"🎂 Дата рождения: {birthdate}\n"
