@@ -71,10 +71,10 @@ def get_request_keyboard(request_id: int) -> InlineKeyboardMarkup:
     return b.as_markup()
 
 
-def get_accept_request_keyboard():
+def get_accept_request_keyboard(target: str = "start"):
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="👤 Список друзей", callback_data="friends_edit_menu")],
-        [InlineKeyboardButton(text="⬅️ В главное меню", callback_data="start")]
+        [InlineKeyboardButton(text="⬅️ В главное меню", callback_data=target)]
     ])
 
 
