@@ -32,6 +32,9 @@ async def show_statistics_command(msg: Message):
 
 
 @stats_router.callback_query(F.data == "statistics")
+@private_only
+@ensure_user_in_db
+@sync_username
 async def show_statistics_callback(clb: CallbackQuery):
     user = clb.from_user
     user_id, full_name, user_name = user.id, user.full_name, user.username
