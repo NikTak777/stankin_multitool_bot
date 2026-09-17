@@ -29,7 +29,8 @@ def get_profile_info_text(user_id: int) -> str:
 
     text = (
         f"📌 Информация о Вашем аккаунте:\n\n"
-        f"👤 Имя пользователя: {full_name} {user_name}\n"
+        f"👤 Имя пользователя: {full_name}\n"
+        f"💬 Юзернейм: {user_name}\n"
         f"🏷 Никнейм: {nick_name}\n"
         f"🎂 Дата рождения: {birthdate}\n"
         f"🎁 Вишлист: {wishlist}\n"
