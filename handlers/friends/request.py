@@ -69,7 +69,7 @@ async def send_friend_request(message: Message, state: FSMContext):
             )
             await message.answer(
                 text=msg_to_user,
-                reply_markup=get_cancel_inline_keyboard("friends_menu")
+                reply_markup=get_accept_request_keyboard("friends_menu")
             )
             write_user_log(f"Пользователь {full_name} ({user_id}) @{user_name} "
                            f"успешно отправил запрос пользователю {search_username} ({friend_id})")
