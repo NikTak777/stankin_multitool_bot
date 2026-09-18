@@ -1,4 +1,4 @@
-from datetime import datetime
+import time
 from random import choices
 from operator import itemgetter
 
@@ -13,6 +13,10 @@ from config import ADMIN_ID
 START_DATE = format_str_to_datetime("18-09-2026")
 END_DATE = format_str_to_datetime("28-09-2026")
 ACTIVE_DAYS_COUNT = 3
+CACHE_TTL_SECONDS = 3600
+
+cached_eligible_users: list[dict] | None = None
+cache_last_updated: float = 0
 
 """
 Условия конкурса:
@@ -148,23 +152,8 @@ def get_friends_activity(user_id: int) -> list[dict]:
 
 
 def get_contest_stats(user_weight: int, target_user_id: int) -> tuple[float, int]:
-    all_eligible_weights: list[int] = []
-    users_list: list[int] = get_all_user_ids()
-
-    for user_id in users_list:
-        if user_id != ADMIN_ID and get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
-            friends: list[dict] = get_friends_activity(user_id)
-            count_active_friends: int = 0
-            count_inactive_friends: int = 0
-
-            for friend in friends:
-                if friend['count'] >= 3:
-                    count_active_friends += 1
-                else:
-                    count_inactive_friends += 1
-            if count_active_friends >= 3:
-                weight = get_user_weight(count_active_friends, count_inactive_friends)
-                all_eligible_weights.append(weight)
+    cached_users = get_cached_eligible_users()
+    all_eligible_weights = [u["weight"] for u in cached_users]
 
     total_weight = sum(all_eligible_weights)
     total_eligible = len(all_eligible_weights)
@@ -173,11 +162,10 @@ def get_contest_stats(user_weight: int, target_user_id: int) -> tuple[float, int
         total_weight += user_weight
         total_eligible += 1
 
-    if total_weight == 0:
+    if total_weight == 0 or total_eligible == 0:
         return 0.0, 100
 
     win_chance = (user_weight / total_weight) * 100
-
     better_users = sum(1 for w in all_eligible_weights if w > user_weight)
 
     top_percent = int((better_users / total_eligible) * 100)
@@ -220,46 +208,24 @@ def start_raffle() -> int:
 
 
 def get_all_contest_stats() -> str:
-    all_users: list[int] = get_all_user_ids()
-    eligible_users: list[dict] = []
-    total_weight: int = 0
+    cached_users = get_cached_eligible_users()
 
-    for user_id in all_users:
-        if user_id != ADMIN_ID and get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
-            friends: list[dict] = get_friends_activity(user_id)
-            count_active_friends: int = 0
-            count_inactive_friends: int = 0
-
-            for friend in friends:
-                if friend['count'] >= 3:
-                    count_active_friends += 1
-                else:
-                    count_inactive_friends += 1
-
-            if count_active_friends >= 3:
-                weight = get_user_weight(count_active_friends, count_inactive_friends)
-                total_weight += weight
-
-                user_name = get_user_info(user_id).get('user_name', f"ID {user_id}")
-
-                eligible_users.append({
-                    "name": user_name,
-                    "weight": weight
-                })
-
-    if not eligible_users:
+    if not cached_users:
         return "😔 Пока нет участников, выполнивших все условия конкурса."
 
-    for user in eligible_users:
-        user['chance'] = (user['weight'] / total_weight) * 100
+    total_weight = sum(u["weight"] for u in cached_users)
+
+    eligible_users = []
+    for u in cached_users:
+        user_name = get_user_info(u["user_id"]).get('user_name', f"ID {u['user_id']}")
+        chance = (u["weight"] / total_weight) * 100
+        eligible_users.append({"name": user_name, "chance": chance})
 
     eligible_users.sort(key=itemgetter("chance"), reverse=True)
 
     text_lines = ["🏆 Рейтинг участников розыгрыша:\n"]
-
     for i, user in enumerate(eligible_users, start=1):
-        chance_str = f"{user['chance']:.2f}%"
-        text_lines.append(f"{i}. {user['name']} — {chance_str}")
+        text_lines.append(f"{i}. {user['name']} — {user['chance']:.2f}%")
 
     return "\n".join(text_lines)
 
@@ -287,3 +253,35 @@ def get_left_time_context_text() -> str:
         return f"⏰ До завершения розыгрыша осталось всего {time_ago}!"
     else:
         return ""
+
+
+def get_cached_eligible_users() -> list[dict]:
+    """Собирает список подходящих участников с их весом. Кэширует результат."""
+    global cached_eligible_users, cache_last_updated
+    now = time.time()
+
+    if cached_eligible_users is not None and (now - cache_last_updated) < CACHE_TTL_SECONDS:
+        return cached_eligible_users
+
+    eligible_users = []
+    users_list = get_all_user_ids()
+
+    for user_id in users_list:
+        if user_id == ADMIN_ID:
+            continue
+
+        if get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
+            friends = get_friends_activity(user_id)
+            count_active_friends = sum(1 for f in friends if f['count'] >= 3)
+            count_inactive_friends = len(friends) - count_active_friends
+
+            if count_active_friends >= 3:
+                weight = get_user_weight(count_active_friends, count_inactive_friends)
+                eligible_users.append({
+                    "user_id": user_id,
+                    "weight": weight
+                })
+
+    cached_eligible_users = eligible_users
+    cache_last_updated = now
+    return cached_eligible_users
