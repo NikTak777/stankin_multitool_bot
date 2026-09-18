@@ -12,11 +12,11 @@ def get_active_days_count(user_id: int, start_date: datetime, end_date: datetime
         cur = con.cursor()
 
         cur.execute("""
-            SELECT COUNT(DISTINCT DATE(ts))
+            SELECT COUNT(DISTINCT DATE(ts + INTERVAL '3 hours'))
             FROM user_activity
             WHERE user_id = %s
-            AND ts >= %s 
-            AND ts <= %s
+            AND (ts + INTERVAL '3 hours') >= %s 
+            AND (ts + INTERVAL '3 hours') <= %s
             AND event = %s
         """, (user_id, start_date, end_date, activity))
 
