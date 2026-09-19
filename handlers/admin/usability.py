@@ -16,7 +16,6 @@ async def usability_panel_callback(callback: CallbackQuery):
             text=get_usability_panel(),
             reply_markup=get_admin_panel_keyboard()
         )
-        await callback.answer()
         write_user_log(
             f"Админ {callback.from_user.full_name} ({callback.from_user.id}) "
             f"@{callback.from_user.username} открыл панель использования пользователями"
@@ -26,3 +25,4 @@ async def usability_panel_callback(callback: CallbackQuery):
             f"Ошибка вывода панели использования пользователями у админа {callback.from_user.full_name} "
             f"({callback.from_user.id}) @{callback.from_user.username}. Сообщение не обновлено."
         )
+    await callback.answer()
