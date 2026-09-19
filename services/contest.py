@@ -3,7 +3,7 @@ from random import choices
 from operator import itemgetter
 
 from utils.database_utils.friends import get_list_friends
-from utils.database_utils.contest import get_active_days_count, get_winner_contest
+from utils.database_utils.contest import get_active_days_count, get_winner_contest, get_all_users_activity
 from utils.time import format_str_to_datetime, get_now_time
 from utils.database import get_user_info, get_all_user_ids
 from utils.database_utils.database_statistic import log_user_activity
@@ -181,20 +181,16 @@ def get_user_weight(count_active_friends: int, count_inactive_friends: int) -> i
 
 
 def start_raffle() -> int:
-    all_users: list[int] = get_all_user_ids()
+    activity_map = get_all_users_activity(START_DATE, END_DATE, "schedule")
     active_users: list[int] = []
     weight_users: list[int] = []
 
-    for user_id in all_users:
-        if user_id != ADMIN_ID and get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
-            friends: list[dict] = get_friends_activity(user_id)
-            count_active_friends: int = 0
-            count_inactive_friends: int = 0
-            for friend in friends:
-                if friend['count'] >= 3:
-                    count_active_friends += 1
-                else:
-                    count_inactive_friends += 1
+    for user_id, user_active_days in activity_map.items():
+        if user_id != ADMIN_ID and user_active_days >= ACTIVE_DAYS_COUNT:
+            friends_ids: list[int] = get_list_friends(user_id)
+            count_active_friends = sum(1 for fid in friends_ids if activity_map.get(fid, 0) >= 3)
+            count_inactive_friends = len(friends_ids) - count_active_friends
+
             if count_active_friends >= 3:
                 active_users.append(user_id)
                 weight_users.append(get_user_weight(count_active_friends, count_inactive_friends))
@@ -264,16 +260,16 @@ def get_cached_eligible_users() -> list[dict]:
         return cached_eligible_users
 
     eligible_users = []
-    users_list = get_all_user_ids()
+    activity_map = get_all_users_activity(START_DATE, END_DATE, "schedule")
 
-    for user_id in users_list:
+    for user_id, user_active_days in activity_map.items():
         if user_id == ADMIN_ID:
             continue
 
-        if get_active_days_count(user_id, START_DATE, END_DATE) >= ACTIVE_DAYS_COUNT:
-            friends = get_friends_activity(user_id)
-            count_active_friends = sum(1 for f in friends if f['count'] >= 3)
-            count_inactive_friends = len(friends) - count_active_friends
+        if user_active_days >= ACTIVE_DAYS_COUNT:
+            friends_ids: list[int] = get_list_friends(user_id)
+            count_active_friends = sum(1 for fid in friends_ids if activity_map.get(fid, 0) >= 3)
+            count_inactive_friends = len(friends_ids) - count_active_friends
 
             if count_active_friends >= 3:
                 weight = get_user_weight(count_active_friends, count_inactive_friends)
