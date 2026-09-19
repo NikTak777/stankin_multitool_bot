@@ -42,7 +42,7 @@ def get_winner_contest(activity: str = "contest") -> int:
         return result[0] if result else 0
 
 
-def get_all_users_active(start_date: datetime, end_date: datetime, activity: str = "schedule") -> dict[int, int]:
+def get_all_users_activity(start_date: datetime, end_date: datetime, activity: str = "schedule") -> dict[int, int]:
     """
     Возвращает словарь пользователей и количество дней
     просмотра расписания в указанный период времени.
