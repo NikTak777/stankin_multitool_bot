@@ -119,12 +119,15 @@ def check_conditions(user_id: int) -> str:
     info_msg += active_friends_summary
     info_msg += f"{friends_list_text}\n"
 
-    win_weight: int = get_user_weight(count_active_friends, count_inactive_friends)
+    win_weight: int = get_user_weight(count_active_friends, count_inactive_friends, active_user_status)
     info_msg += f"⚡ Ваше количество очков: {win_weight}\n"
 
-    win_chance, top_percent = get_contest_stats(win_weight, user_id)
-    # info_msg += f"🎯 Текущая вероятность победы: {win_chance}%\n"
-    info_msg += f"📈 Ваш статус: Вы входите в Топ-{top_percent}% участников с наивысшими шансами!\n\n"
+    if win_weight > 0:
+        win_chance, top_percent = get_contest_stats(win_weight, user_id)
+        # info_msg += f"🎯 Текущая вероятность победы: {win_chance}%\n"
+        info_msg += f"📈 Ваш статус: Вы входите в Топ-{top_percent}% участников с наивысшими шансами!\n\n"
+    else:
+        info_msg += f"<i>⚠️ Выполните все условия выше, чтобы начать копить очки и попасть в рейтинг!</i>\n\n"
     info_msg += get_left_time_context_text()
 
     return info_msg
@@ -175,9 +178,11 @@ def get_contest_stats(user_weight: int, target_user_id: int) -> tuple[float, int
     return round(win_chance, 2), top_percent
 
 
-def get_user_weight(count_active_friends: int, count_inactive_friends: int) -> int:
-    user_weight: int = count_active_friends * 3 + min(count_inactive_friends, 10)
-    return user_weight
+def get_user_weight(count_active_friends: int, count_inactive_friends: int, is_user_active: bool = True) -> int:
+    if not is_user_active or count_active_friends < 3:
+        return 0
+
+    return count_active_friends * 3 + min(count_inactive_friends, 10)
 
 
 def start_raffle() -> int:
