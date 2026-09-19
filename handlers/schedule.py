@@ -388,6 +388,7 @@ async def show_schedule_for_date(
         if "message is not modified" not in str(e):
             print(f"TelegramBadRequest: {e}")
 
+    log_user_activity(user_id, "schedule")
     write_user_log(
         f"Пользователь {user_fullname} ({user_id}) посмотрел недельное расписание на {target_date.strftime('%d.%m.%Y')}"
     )
@@ -437,6 +438,7 @@ async def show_custom_schedule_for_date(
         if "message is not modified" not in str(e):
             print(f"TelegramBadRequest: {e}")
 
+    log_user_activity(user_id, "schedule")
     write_user_log(
         f"Пользователь {user_fullname} ({user_id}) посмотрел кастомное расписание на {target_date.strftime('%d.%m')}"
     )
