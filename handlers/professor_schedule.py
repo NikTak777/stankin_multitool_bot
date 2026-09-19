@@ -169,6 +169,8 @@ async def _show_professor_schedule_for_date(
         if "message is not modified" not in str(e):
             raise
 
+    log_user_activity(message.from_user.id, "schedule")
+
 
 @router.callback_query(F.data == "professor_schedule_open")
 @private_only
