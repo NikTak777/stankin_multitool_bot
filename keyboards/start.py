@@ -9,7 +9,7 @@ def get_start_inline_keyboard(
     keyboard = [
         [InlineKeyboardButton(text="📅 Расписание", callback_data="schedule")],
         [InlineKeyboardButton(text="👨‍🏫 Расписание преподавателя", callback_data="professor_schedule_open")],
-        [InlineKeyboardButton(text="👤 Профиль", callback_data="info")],
+        [InlineKeyboardButton(text="👤 Профиль", callback_data="profile-info")],
         [InlineKeyboardButton(text="🤝 Друзья", callback_data="friends_menu")],
         [InlineKeyboardButton(text="🔎 Поиск людей", callback_data="search_profile")],
         [InlineKeyboardButton(text="❓ FAQ", callback_data="help")]
