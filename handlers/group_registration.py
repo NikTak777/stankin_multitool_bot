@@ -46,7 +46,7 @@ async def initialization_bot_in_group(message: types.Message, state: FSMContext)
         write_user_log(
             f"Админ {user_name} ({user_id}) закончил регистрацию. Группа {group_name} {group_id} уже зарегистрирована"
         )
-        if not await is_group_file_exists(group_name):
+        if not is_group_file_exists(group_name):
             await message.answer("⚠️ Пока расписание вашей группы отсутствует в системе.")
         return
 
@@ -107,5 +107,5 @@ async def process_group_name(message: types.Message, state: FSMContext):
     write_user_log(f"Админ {message.from_user.full_name} ({user_id}) зарегистрировал группу {group_name} ({group_id})")
     await state.clear()
 
-    if not await is_group_file_exists(group_name):
+    if not is_group_file_exists(group_name):
         await message.answer("⚠️ Пока расписание вашей группы отсутствует в системе.")

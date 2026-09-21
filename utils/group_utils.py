@@ -48,9 +48,9 @@ def is_valid_group_name(name: str) -> bool:
     return bool(re.match(pattern, name))
 
 
-async def is_group_file_exists(group_name: str) -> bool:
+def is_group_file_exists(group_name: str) -> bool:
     """
-    Асинхронно проверяет, существует ли файл с расписанием группы.
+    Синхронно проверяет, существует ли файл с расписанием группы.
 
     :param group_name: Название группы (например, "ИДБ-23-10")
     :return: True, если файл существует, иначе False
