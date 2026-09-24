@@ -86,6 +86,7 @@ async def profile_name_subgroup_input(clb: CallbackQuery, state: FSMContext):
         text=get_subgroup_input_text(),
         reply_markup = await get_select_subgroup_keyboard()
     )
+    await clb.answer()
     await state.set_state(GroupSelectState.choosing_subgroup)
     write_user_log(f"Пользователь {user.full_name} ({user.id}) @{user.username} "
                    f"ввёл группу {selected_group} через inline-клавиатуру")
